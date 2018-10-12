@@ -1,4 +1,6 @@
-module Dashboard.Group exposing (..)
+module Dashboard.Group exposing (APIData, DragState(..), DropState(..), Group, GroupBody(..), GroupHeader(..), Msg(..), NewGroup, PipelineIndex, allPipelines, allTeamNames, apiData, dragIndex, dragIndexOptional, dropIndex, dropIndexOptional, findGroupOptional, group, groups, groupsLens, hdView, headerView, ordering, pipelineDropAreaView, pipelineNotSetView, remoteData, setDragIndex, setDropIndex, setTeamName, shiftPipelineTo, shiftPipelines, teamName, teamNameOptional, view, viewHeader)
+
+-- import Dashboard.Details as Details
 
 import Concourse
 import Concourse.Info
@@ -7,12 +9,8 @@ import Concourse.Pipeline
 import Concourse.PipelineStatus
 import Concourse.Resource
 import Concourse.Team
-import Dashboard.Pipeline as Pipeline
 import Dashboard.Group.Tag as Tag
-
-
--- import Dashboard.Details as Details
-
+import Dashboard.Pipeline as Pipeline
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onMouseEnter)
@@ -21,8 +19,8 @@ import Json.Decode
 import List.Extra
 import Maybe.Extra
 import Monocle.Iso
-import Monocle.Optional
 import Monocle.Lens
+import Monocle.Optional
 import Ordering exposing (Ordering)
 import Set
 import Task
@@ -126,8 +124,8 @@ findGroupOptional teamName =
         predicate =
             .teamName >> (==) teamName
     in
-        Monocle.Optional.Optional (List.Extra.find predicate)
-            (\g gs -> List.Extra.findIndex predicate gs |> Maybe.map (\i -> List.Extra.setAt i g gs) |> Maybe.Extra.join |> Maybe.withDefault gs)
+    Monocle.Optional.Optional (List.Extra.find predicate)
+        (\g gs -> List.Extra.findIndex predicate gs |> Maybe.map (\i -> List.Extra.setAt i g gs) |> Maybe.Extra.join |> Maybe.withDefault gs)
 
 
 type alias PipelineIndex =
@@ -255,6 +253,7 @@ shiftPipelines : Int -> Int -> Group -> Group
 shiftPipelines dragIndex dropIndex group =
     if dragIndex == dropIndex then
         group
+
     else
         let
             pipelines =
@@ -269,7 +268,7 @@ shiftPipelines dragIndex dropIndex group =
                     Just pipeline ->
                         shiftPipelineTo pipeline dropIndex group.pipelines
         in
-            { group | pipelines = pipelines }
+        { group | pipelines = pipelines }
 
 
 
@@ -284,16 +283,20 @@ shiftPipelineTo ({ pipeline } as pipelineWithJobs) position pipelines =
         [] ->
             if position < 0 then
                 []
+
             else
                 [ pipelineWithJobs ]
 
         p :: ps ->
             if p.pipeline.teamName /= pipeline.teamName then
                 p :: shiftPipelineTo pipelineWithJobs position ps
+
             else if p.pipeline == pipeline then
                 shiftPipelineTo pipelineWithJobs (position - 1) ps
+
             else if position == 0 then
                 pipelineWithJobs :: p :: shiftPipelineTo pipelineWithJobs (position - 1) ps
+
             else
                 p :: shiftPipelineTo pipelineWithJobs (position - 1) ps
 
@@ -322,8 +325,8 @@ groups apiData =
         teamNames =
             allTeamNames apiData
     in
-        teamNames
-            |> List.map (group (allPipelines apiData))
+    teamNames
+        |> List.map (group (allPipelines apiData))
 
 
 
@@ -339,17 +342,17 @@ apiData groups =
         pipelines =
             groups |> List.concatMap .pipelines
     in
-        { teams = groups |> List.map (\g -> { id = 0, name = g.teamName })
-        , pipelines = pipelines |> List.map .pipeline
-        , jobs = pipelines |> List.concatMap .jobs
-        , resources = []
-        , version = ""
-        }
+    { teams = groups |> List.map (\g -> { id = 0, name = g.teamName })
+    , pipelines = pipelines |> List.map .pipeline
+    , jobs = pipelines |> List.concatMap .jobs
+    , resources = []
+    , version = ""
+    }
 
 
 group : List Pipeline.PipelineWithJobs -> String -> Group
 group allPipelines teamName =
-    { pipelines = (List.filter ((==) teamName << .teamName << .pipeline) allPipelines)
+    { pipelines = List.filter ((==) teamName << .teamName << .pipeline) allPipelines
     , teamName = teamName
     }
 
@@ -365,6 +368,7 @@ view header dragState dropState now group =
         pipelines =
             if List.isEmpty group.pipelines then
                 [ Pipeline.pipelineNotSetView ]
+
             else
                 List.append
                     (List.indexedMap
@@ -394,10 +398,10 @@ view header dragState dropState now group =
                     )
                     [ pipelineDropAreaView dragState dropState group.teamName (List.length group.pipelines) ]
     in
-        Html.div [ id group.teamName, class "dashboard-team-group", attribute "data-team-name" group.teamName ]
-            [ Html.div [ class "dashboard-team-header" ] header
-            , Html.div [ class "dashboard-team-pipelines" ] pipelines
-            ]
+    Html.div [ id group.teamName, class "dashboard-team-group", attribute "data-team-name" group.teamName ]
+        [ Html.div [ class "dashboard-team-header" ] header
+        , Html.div [ class "dashboard-team-pipelines" ] pipelines
+        ]
 
 
 hdView : List (Html Msg) -> String -> List Pipeline.PipelineWithJobs -> Html Msg
@@ -406,17 +410,18 @@ hdView header teamName pipelines =
         teamPipelines =
             if List.isEmpty pipelines then
                 [ pipelineNotSetView ]
+
             else
                 List.map (Pipeline.hdPipelineView >> Html.map PipelineMsg) pipelines
     in
-        Html.div [ class "pipeline-wrapper" ] <|
-            case teamPipelines of
-                [] ->
-                    header
+    Html.div [ class "pipeline-wrapper" ] <|
+        case teamPipelines of
+            [] ->
+                header
 
-                p :: ps ->
-                    -- Wrap the team name and the first pipeline together so the team name is not the last element in a column
-                    List.append [ Html.div [ class "dashboard-team-name-wrapper" ] (header ++ [ p ]) ] ps
+            p :: ps ->
+                -- Wrap the team name and the first pipeline together so the team name is not the last element in a column
+                List.append [ Html.div [ class "dashboard-team-name-wrapper" ] (header ++ [ p ]) ] ps
 
 
 pipelineNotSetView : Html msg
@@ -453,8 +458,8 @@ pipelineDropAreaView dragState dropState teamName index =
                 _ ->
                     ( False, False )
     in
-        Html.div
-            [ classList [ ( "drop-area", True ), ( "active", active ), ( "over", over ), ( "animation", dropState /= NotDropping ) ]
-            , on "dragenter" (Json.Decode.succeed (DragOver teamName index))
-            ]
-            [ Html.text "" ]
+    Html.div
+        [ classList [ ( "drop-area", True ), ( "active", active ), ( "over", over ), ( "animation", dropState /= NotDropping ) ]
+        , on "dragenter" (Json.Decode.succeed (DragOver teamName index))
+        ]
+        [ Html.text "" ]

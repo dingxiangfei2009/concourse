@@ -1,21 +1,20 @@
-module Dashboard.Pipeline
-    exposing
-        ( Msg(..)
-        , PipelineWithJobs
-        , SummaryPipeline
-        , PreviewPipeline
-        , pipelineNotSetView
-        , pipelineView
-        , hdPipelineView
-        , pipelineStatus
-        , pipelineStatusFromJobs
-        )
+module Dashboard.Pipeline exposing
+    ( Msg(..)
+    , PipelineWithJobs
+    , PreviewPipeline
+    , SummaryPipeline
+    , hdPipelineView
+    , pipelineNotSetView
+    , pipelineStatus
+    , pipelineStatusFromJobs
+    , pipelineView
+    )
 
 import Concourse
 import Concourse.PipelineStatus
-import Duration
 import DashboardPreview
 import Date
+import Duration
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onMouseEnter)
@@ -145,12 +144,12 @@ transitionTime pipeline =
         events =
             pipeline.jobs |> List.filterMap jobEvent |> List.sortBy .time
     in
-        events
-            |> List.Extra.dropWhile .succeeded
-            |> List.head
-            |> Maybe.map Just
-            |> Maybe.withDefault (List.Extra.last events)
-            |> Maybe.map .time
+    events
+        |> List.Extra.dropWhile .succeeded
+        |> List.head
+        |> Maybe.map Just
+        |> Maybe.withDefault (List.Extra.last events)
+        |> Maybe.map .time
 
 
 jobEvent : Concourse.Job -> Maybe Event
@@ -182,7 +181,7 @@ transitionStart =
 
 sinceTransitionText : PipelineWithJobs -> Time -> String
 sinceTransitionText pipeline now =
-    Maybe.map (flip Duration.between now) (transitionTime pipeline)
+    Maybe.map (\a -> Duration.between a now) (transitionTime pipeline)
         |> Maybe.map Duration.format
         |> Maybe.withDefault ""
 
@@ -213,6 +212,7 @@ pipelineStatus : PipelineWithJobs -> Concourse.PipelineStatus
 pipelineStatus { pipeline, jobs } =
     if pipeline.paused then
         Concourse.PipelineStatusPaused
+
     else
         pipelineStatusFromJobs jobs True
 
@@ -223,20 +223,26 @@ pipelineStatusFromJobs jobs includeNextBuilds =
         statuses =
             jobStatuses jobs
     in
-        if containsStatus Concourse.BuildStatusPending statuses then
-            Concourse.PipelineStatusPending
-        else if includeNextBuilds && List.any (\job -> job.nextBuild /= Nothing) jobs then
-            Concourse.PipelineStatusRunning
-        else if containsStatus Concourse.BuildStatusFailed statuses then
-            Concourse.PipelineStatusFailed
-        else if containsStatus Concourse.BuildStatusErrored statuses then
-            Concourse.PipelineStatusErrored
-        else if containsStatus Concourse.BuildStatusAborted statuses then
-            Concourse.PipelineStatusAborted
-        else if containsStatus Concourse.BuildStatusSucceeded statuses then
-            Concourse.PipelineStatusSucceeded
-        else
-            Concourse.PipelineStatusPending
+    if containsStatus Concourse.BuildStatusPending statuses then
+        Concourse.PipelineStatusPending
+
+    else if includeNextBuilds && List.any (\job -> job.nextBuild /= Nothing) jobs then
+        Concourse.PipelineStatusRunning
+
+    else if containsStatus Concourse.BuildStatusFailed statuses then
+        Concourse.PipelineStatusFailed
+
+    else if containsStatus Concourse.BuildStatusErrored statuses then
+        Concourse.PipelineStatusErrored
+
+    else if containsStatus Concourse.BuildStatusAborted statuses then
+        Concourse.PipelineStatusAborted
+
+    else if containsStatus Concourse.BuildStatusSucceeded statuses then
+        Concourse.PipelineStatusSucceeded
+
+    else
+        Concourse.PipelineStatusPending
 
 
 jobStatuses : List Concourse.Job -> List (Maybe Concourse.BuildStatus)

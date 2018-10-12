@@ -1,4 +1,4 @@
-module Concourse.PipelineStatus exposing (..)
+module Concourse.PipelineStatus exposing (isRunning, show)
 
 import Concourse
 

@@ -1,21 +1,21 @@
-module BuildOutput exposing (init, update, view, Model, Msg, OutMsg(..))
+module BuildOutput exposing (Model, Msg, OutMsg(..), init, update, view)
 
 import Ansi.Log
 import Array exposing (Array)
-import Dict exposing (Dict)
+import Concourse
+import Concourse.BuildEvents
+import Concourse.BuildPlan
+import Concourse.BuildResources exposing (empty, fetch)
+import Concourse.BuildStatus
 import Date exposing (Date)
+import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes exposing (action, class, classList, id, method, title)
 import Http
-import Task exposing (Task)
-import Concourse
-import Concourse.BuildPlan
-import Concourse.BuildEvents
-import Concourse.BuildStatus
-import Concourse.BuildResources exposing (empty, fetch)
 import LoadingIndicator
-import StepTree exposing (StepTree)
 import NotAuthorized
+import StepTree exposing (StepTree)
+import Task exposing (Task)
 
 
 type alias Model =
@@ -58,6 +58,7 @@ init flags build =
         outputState =
             if Concourse.BuildStatus.isRunning build.status then
                 StepsLiveUpdating
+
             else
                 StepsLoading
 
@@ -74,10 +75,11 @@ init flags build =
         fetch =
             if build.job /= Nothing then
                 fetchBuildPlanAndResources model.build.id
+
             else
                 fetchBuildPlan model.build.id
     in
-        ( model, fetch )
+    ( model, fetch )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -94,11 +96,12 @@ update action model =
                         , Cmd.none
                         , OutNoop
                         )
+
                     else
                         ( model, Cmd.none, OutNoop )
 
                 _ ->
-                    flip always (Debug.log ("failed to fetch plan") (err)) <|
+                    (\a -> always a (Debug.log "failed to fetch plan" err)) <|
                         ( model, Cmd.none, OutNoop )
 
         PlanAndResourcesFetched (Ok ( plan, resources )) ->
@@ -120,7 +123,7 @@ update action model =
                         ( newModel, newMsg ) =
                             StepTree.update action st
                     in
-                        ( { model | steps = Just newModel }, Cmd.map StepTreeMsg newMsg, OutNoop )
+                    ( { model | steps = Just newModel }, Cmd.map StepTreeMsg newMsg, OutNoop )
 
                 _ ->
                     ( model, Cmd.none, OutNoop )
@@ -137,6 +140,7 @@ handleEventsMsg action model =
                 -- connection could have dropped out of the blue; just let the browser
                 -- handle reconnecting
                 ( model, Cmd.none, OutNoop )
+
             else
                 -- assume request was rejected because auth is required; no way to
                 -- really tell
@@ -146,7 +150,7 @@ handleEventsMsg action model =
             Array.foldl handleEvent_ ( model, Cmd.none, OutNoop ) events
 
         Concourse.BuildEvents.Events (Err err) ->
-            flip always (Debug.log ("failed to get event") (err)) <|
+            (\a -> always a (Debug.log "failed to get event" err)) <|
                 ( model, Cmd.none, OutNoop )
 
 
@@ -156,26 +160,26 @@ handleEvent_ ev ( m, msgpassedin, outmsgpassedin ) =
         ( m1, msgfromhandleevent, outmsgfromhandleevent ) =
             handleEvent ev m
     in
-        ( m1
-        , case ( msgpassedin == Cmd.none, msgfromhandleevent == Cmd.none ) of
-            ( True, True ) ->
-                Cmd.none
+    ( m1
+    , case ( msgpassedin == Cmd.none, msgfromhandleevent == Cmd.none ) of
+        ( True, True ) ->
+            Cmd.none
 
-            ( False, True ) ->
-                msgpassedin
+        ( False, True ) ->
+            msgpassedin
 
-            otherwise ->
-                msgfromhandleevent
-        , case ( outmsgpassedin == OutNoop, outmsgfromhandleevent == OutNoop ) of
-            ( True, True ) ->
-                OutNoop
+        otherwise ->
+            msgfromhandleevent
+    , case ( outmsgpassedin == OutNoop, outmsgfromhandleevent == OutNoop ) of
+        ( True, True ) ->
+            OutNoop
 
-            ( False, True ) ->
-                outmsgpassedin
+        ( False, True ) ->
+            outmsgpassedin
 
-            otherwise ->
-                outmsgfromhandleevent
-        )
+        otherwise ->
+            outmsgfromhandleevent
+    )
 
 
 handleEvent : Concourse.BuildEvents.BuildEvent -> Model -> ( Model, Cmd Msg, OutMsg )
@@ -230,10 +234,11 @@ handleEvent event model =
                         ( newSt, newMsg ) =
                             if not <| Concourse.BuildStatus.isRunning status then
                                 StepTree.update StepTree.Finished st
+
                             else
                                 ( st, Cmd.none )
                     in
-                        ( { model | steps = Just newSt }, Cmd.map StepTreeMsg newMsg, OutBuildStatus status date )
+                    ( { model | steps = Just newSt }, Cmd.map StepTreeMsg newMsg, OutBuildStatus status date )
 
                 Nothing ->
                     ( model, Cmd.none, OutBuildStatus status date )
@@ -265,14 +270,14 @@ setRunning =
 
 appendStepLog : String -> Maybe Date -> StepTree -> StepTree
 appendStepLog output mtime tree =
-    flip StepTree.map tree <|
+    (\a -> StepTree.map a tree) <|
         \step ->
             let
                 outputLineCount =
                     Ansi.Log.update output (Ansi.Log.init Ansi.Log.Cooked) |> .lines |> Array.length
 
                 logLineCount =
-                    max ((Array.length step.log.lines) - 1) 0
+                    max (Array.length step.log.lines - 1) 0
 
                 setLineTimestamp line timestamps =
                     Dict.update line (\mval -> mtime) timestamps
@@ -286,7 +291,7 @@ appendStepLog output mtime tree =
                 newLog =
                     Ansi.Log.update output step.log
             in
-                { step | log = newLog, timestamps = newTimestamps }
+            { step | log = newLog, timestamps = newTimestamps }
 
 
 setStepError : String -> StepTree -> StepTree
@@ -307,10 +312,11 @@ finishStep exitStatus tree =
         stepState =
             if exitStatus == 0 then
                 StepTree.StepStateSucceeded
+
             else
                 StepTree.StepStateFailed
     in
-        setStepState stepState tree
+    setStepState stepState tree
 
 
 setResourceInfo : Concourse.Version -> Concourse.Metadata -> StepTree -> StepTree
@@ -326,13 +332,13 @@ setStepState state tree =
 fetchBuildPlanAndResources : Int -> Cmd Msg
 fetchBuildPlanAndResources buildId =
     Task.attempt PlanAndResourcesFetched <|
-        Task.map2 (,) (Concourse.BuildPlan.fetch buildId) (Concourse.BuildResources.fetch buildId)
+        Task.map2 (\a b -> ( a, b )) (Concourse.BuildPlan.fetch buildId) (Concourse.BuildResources.fetch buildId)
 
 
 fetchBuildPlan : Int -> Cmd Msg
 fetchBuildPlan buildId =
     Task.attempt PlanAndResourcesFetched <|
-        Task.map (flip (,) Concourse.BuildResources.empty) (Concourse.BuildPlan.fetch buildId)
+        Task.map (\a -> (\a b -> ( a, b )) a Concourse.BuildResources.empty) (Concourse.BuildPlan.fetch buildId)
 
 
 subscribeToEvents : Int -> Sub Msg

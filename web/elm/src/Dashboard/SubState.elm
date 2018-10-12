@@ -1,10 +1,10 @@
-module Dashboard.SubState exposing (..)
+module Dashboard.SubState exposing (SubState, TeamData(..), apiData, apiDataLens, detailsLens, detailsOptional, hideFooterCounterLens, hideFooterLens, setApiData, showFooter, teamData, teamDataLens, tick, updateFooter)
 
 import Concourse
-import Dashboard.Group as Group
 import Dashboard.Details as Details
-import Monocle.Optional
+import Dashboard.Group as Group
 import Monocle.Lens
+import Monocle.Optional
 import MonocleHelpers exposing (..)
 import Time exposing (Time)
 
@@ -58,6 +58,7 @@ updateFooter : Time.Time -> SubState -> SubState
 updateFooter counter =
     if counter + Time.second > 5 * Time.second then
         hideFooterLens.set True
+
     else
         hideFooterCounterLens.set (counter + Time.second)
 

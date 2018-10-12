@@ -1,4 +1,4 @@
-module Concourse.BuildStatus exposing (..)
+module Concourse.BuildStatus exposing (isRunning, show)
 
 import Concourse
 

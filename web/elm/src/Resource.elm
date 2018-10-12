@@ -1,13 +1,13 @@
-module Resource exposing (Flags, Msg(..), Model, init, changeToResource, update, updateWithMessage, view, subscriptions, PauseChangingOrErrored(..))
+module Resource exposing (Flags, Model, Msg(..), PauseChangingOrErrored(..), changeToResource, init, subscriptions, update, updateWithMessage, view)
 
 import Concourse
 import Concourse.BuildStatus
-import Concourse.Pagination exposing (Pagination, Paginated, Page, equal)
+import Concourse.Pagination exposing (Page, Paginated, Pagination, equal)
 import Concourse.Resource
-import Dict
-import DictView
 import Date exposing (Date)
 import Date.Format
+import Dict
+import DictView
 import Duration exposing (Duration)
 import Erl
 import Html exposing (Html)
@@ -15,12 +15,12 @@ import Html.Attributes exposing (class, href, title)
 import Html.Attributes.Aria exposing (ariaLabel)
 import Html.Events exposing (onClick)
 import Http
+import LoginRedirect
 import Navigation
+import RemoteData exposing (WebData)
 import StrictEvents
 import Task exposing (Task)
 import Time exposing (Time)
-import LoginRedirect
-import RemoteData exposing (WebData)
 import UpdateMsg exposing (UpdateMsg)
 
 
@@ -108,12 +108,12 @@ init ports flags =
                 , csrfToken = flags.csrfToken
                 }
     in
-        ( model
-        , Cmd.batch
-            [ fetchResource model.resourceIdentifier
-            , cmd
-            ]
-        )
+    ( model
+    , Cmd.batch
+        [ fetchResource model.resourceIdentifier
+        , cmd
+        ]
+    )
 
 
 changeToResource : Flags -> Model -> ( Model, Cmd Msg )
@@ -138,12 +138,12 @@ updateWithMessage message model =
         ( mdl, msg ) =
             update message model
     in
-        case mdl.resource of
-            RemoteData.Failure _ ->
-                ( mdl, msg, Just UpdateMsg.NotFound )
+    case mdl.resource of
+        RemoteData.Failure _ ->
+            ( mdl, msg, Just UpdateMsg.NotFound )
 
-            _ ->
-                ( mdl, msg, Nothing )
+        _ ->
+            ( mdl, msg, Nothing )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -169,12 +169,14 @@ update action model =
             )
 
         ResourceFetched (Err err) ->
-            case Debug.log ("failed to fetch resource") (err) of
+            case Debug.log "failed to fetch resource" err of
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else if status.code == 404 then
                         ( { model | resource = RemoteData.Failure err }, Cmd.none )
+
                     else
                         ( model, Cmd.none )
 
@@ -193,6 +195,7 @@ update action model =
                       }
                     , if r.paused then
                         unpauseResource model.resourceIdentifier model.csrfToken
+
                       else
                         pauseResource model.resourceIdentifier model.csrfToken
                     )
@@ -205,6 +208,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -242,20 +246,21 @@ update action model =
                             Just page ->
                                 if Concourse.Pagination.equal page requestedPageUnwrapped then
                                     newModel <| requestedPage
+
                                 else
                                     model
             in
-                case requestedPage of
-                    Nothing ->
-                        ( newModel (Just fetchedPage), Cmd.none )
+            case requestedPage of
+                Nothing ->
+                    ( newModel (Just fetchedPage), Cmd.none )
 
-                    Just requestedPageUnwrapped ->
-                        ( chosenModelWith requestedPageUnwrapped
-                        , Cmd.none
-                        )
+                Just requestedPageUnwrapped ->
+                    ( chosenModelWith requestedPageUnwrapped
+                    , Cmd.none
+                    )
 
         VersionedResourcesFetched _ (Err err) ->
-            flip always (Debug.log ("failed to fetch versioned resources") (err)) <|
+            (\a -> always a (Debug.log "failed to fetch versioned resources" err)) <|
                 ( model, Cmd.none )
 
         LoadPage page ->
@@ -281,17 +286,18 @@ update action model =
                     List.head <|
                         List.filter (checkForVersionID versionID) model.versionedResources.content
             in
-                ( model
-                , case versionedResource of
-                    Just vr ->
-                        if vr.enabled then
-                            disableVersionedResource versionedResourceIdentifier model.csrfToken
-                        else
-                            enableVersionedResource versionedResourceIdentifier model.csrfToken
+            ( model
+            , case versionedResource of
+                Just vr ->
+                    if vr.enabled then
+                        disableVersionedResource versionedResourceIdentifier model.csrfToken
 
-                    Nothing ->
-                        Cmd.none
-                )
+                    else
+                        enableVersionedResource versionedResourceIdentifier model.csrfToken
+
+                Nothing ->
+                    Cmd.none
+            )
 
         VersionedResourceToggled versionID (Ok ()) ->
             let
@@ -309,21 +315,22 @@ update action model =
                 oldContent =
                     model.versionedResources.content
             in
-                ( { model
-                    | versionedResources =
-                        { oldVRs
-                            | content = updateMatchingMember versionID oldContent
-                        }
-                    , versionedUIStates = setState versionID newState model.versionedUIStates
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | versionedResources =
+                    { oldVRs
+                        | content = updateMatchingMember versionID oldContent
+                    }
+                , versionedUIStates = setState versionID newState model.versionedUIStates
+              }
+            , Cmd.none
+            )
 
         VersionedResourceToggled versionID (Err err) ->
             case err of
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -338,11 +345,11 @@ update action model =
                                 , changingErrored = True
                             }
                     in
-                        ( { model
-                            | versionedUIStates = setState versionID newState model.versionedUIStates
-                          }
-                        , Cmd.none
-                        )
+                    ( { model
+                        | versionedUIStates = setState versionID newState model.versionedUIStates
+                      }
+                    , Cmd.none
+                    )
 
         ExpandVersionedResource versionID ->
             let
@@ -361,23 +368,25 @@ update action model =
                         | expanded = not oldState.expanded
                     }
             in
-                ( { model
-                    | versionedUIStates = setState versionID newState model.versionedUIStates
-                  }
-                , if newState.expanded then
-                    Cmd.batch
-                        [ fetchInputTo versionedResourceIdentifier
-                        , fetchOutputOf versionedResourceIdentifier
-                        ]
-                  else
-                    Cmd.none
-                )
+            ( { model
+                | versionedUIStates = setState versionID newState model.versionedUIStates
+              }
+            , if newState.expanded then
+                Cmd.batch
+                    [ fetchInputTo versionedResourceIdentifier
+                    , fetchOutputOf versionedResourceIdentifier
+                    ]
+
+              else
+                Cmd.none
+            )
 
         InputToFetched _ (Err err) ->
             case err of
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -394,17 +403,18 @@ update action model =
                         | inputTo = builds
                     }
             in
-                ( { model
-                    | versionedUIStates = setState versionID newState model.versionedUIStates
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | versionedUIStates = setState versionID newState model.versionedUIStates
+              }
+            , Cmd.none
+            )
 
         OutputOfFetched _ (Err err) ->
             case err of
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -424,11 +434,11 @@ update action model =
                         | outputOf = builds
                     }
             in
-                ( { model
-                    | versionedUIStates = setState versionID newState model.versionedUIStates
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | versionedUIStates = setState versionID newState model.versionedUIStates
+              }
+            , Cmd.none
+            )
 
         NavTo url ->
             ( model, Navigation.newUrl url )
@@ -477,7 +487,7 @@ paginationRoute rid page =
         newParsedRoute =
             Erl.addQuery param boundary <| Erl.addQuery "limit" (Basics.toString page.limit) parsedRoute
     in
-        Erl.toString newParsedRoute
+    Erl.toString newParsedRoute
 
 
 view : Model -> Html Msg
@@ -494,6 +504,7 @@ view model =
                                 ]
                           ]
                         )
+
                     else
                         ( "fr succeeded fa fa-fw fa-check", "checking successfully", [] )
 
@@ -534,7 +545,7 @@ view model =
                                         | limit = 100
                                     }
                             in
-                                ( "btn-page-link next", LoadPage updatedPage )
+                            ( "btn-page-link next", LoadPage updatedPage )
 
                 lastCheckedView =
                     case ( model.now, resource.lastChecked ) of
@@ -544,48 +555,48 @@ view model =
                         ( _, _ ) ->
                             Html.text ""
             in
-                Html.div [ class "with-fixed-header" ]
-                    [ Html.div [ class "fixed-header" ]
-                        [ Html.div [ class "pagination-header" ]
-                            [ Html.div [ class "pagination fr" ]
-                                [ Html.div [ class previousButtonClass, onClick previousButtonEvent ]
-                                    [ Html.a [ class "arrow" ]
-                                        [ Html.i [ class "fa fa-arrow-left" ] []
-                                        ]
-                                    ]
-                                , Html.div [ class nextButtonClass, onClick nextButtonEvent ]
-                                    [ Html.a [ class "arrow" ]
-                                        [ Html.i [ class "fa fa-arrow-right" ] []
-                                        ]
+            Html.div [ class "with-fixed-header" ]
+                [ Html.div [ class "fixed-header" ]
+                    [ Html.div [ class "pagination-header" ]
+                        [ Html.div [ class "pagination fr" ]
+                            [ Html.div [ class previousButtonClass, onClick previousButtonEvent ]
+                                [ Html.a [ class "arrow" ]
+                                    [ Html.i [ class "fa fa-arrow-left" ] []
                                     ]
                                 ]
-                            , Html.h1 [] [ Html.text resource.name ]
-                            , lastCheckedView
-                            ]
-                        ]
-                    , Html.div [ class "scrollable-body" ]
-                        [ Html.div [ class "resource-check-status" ]
-                            [ Html.div [ class "build-step" ]
-                                (List.append
-                                    [ Html.div [ class "header" ]
-                                        [ Html.button
-                                            [ class <| "btn-pause fl " ++ paused
-                                            , ariaLabel aria
-                                            , title aria
-                                            , onClick onClickEvent
-                                            ]
-                                            [ Html.i [ class <| "fa fa-fw " ++ pausedIcon ] []
-                                            ]
-                                        , Html.h3 [] [ Html.text checkMessage ]
-                                        , Html.i [ class <| checkStatus ] []
-                                        ]
+                            , Html.div [ class nextButtonClass, onClick nextButtonEvent ]
+                                [ Html.a [ class "arrow" ]
+                                    [ Html.i [ class "fa fa-arrow-right" ] []
                                     ]
-                                    stepBody
-                                )
+                                ]
                             ]
-                        , (viewVersionedResources model.versionedResources.content model.versionedUIStates)
+                        , Html.h1 [] [ Html.text resource.name ]
+                        , lastCheckedView
                         ]
                     ]
+                , Html.div [ class "scrollable-body" ]
+                    [ Html.div [ class "resource-check-status" ]
+                        [ Html.div [ class "build-step" ]
+                            (List.append
+                                [ Html.div [ class "header" ]
+                                    [ Html.button
+                                        [ class <| "btn-pause fl " ++ paused
+                                        , ariaLabel aria
+                                        , title aria
+                                        , onClick onClickEvent
+                                        ]
+                                        [ Html.i [ class <| "fa fa-fw " ++ pausedIcon ] []
+                                        ]
+                                    , Html.h3 [] [ Html.text checkMessage ]
+                                    , Html.i [ class <| checkStatus ] []
+                                    ]
+                                ]
+                                stepBody
+                            )
+                        ]
+                    , viewVersionedResources model.versionedResources.content model.versionedUIStates
+                    ]
+                ]
 
         Nothing ->
             Html.div [] []
@@ -607,12 +618,13 @@ switchEnabled versionID versionedResource =
         wasEnabled =
             versionedResource.enabled
     in
-        if versionID == versionedResource.id then
-            { versionedResource
-                | enabled = not wasEnabled
-            }
-        else
-            versionedResource
+    if versionID == versionedResource.id then
+        { versionedResource
+            | enabled = not wasEnabled
+        }
+
+    else
+        versionedResource
 
 
 viewVersionedResources : List Concourse.VersionedResource -> Dict.Dict Int VersionUIState -> Html Msg
@@ -630,48 +642,51 @@ viewVersionedResource states versionedResource =
         expanded =
             if resourceState.expanded then
                 " expanded"
+
             else
                 ""
 
         liEnabled =
             (if resourceState.changingErrored then
                 "errored "
+
              else
                 ""
             )
                 ++ (if versionedResource.enabled then
                         "enabled"
+
                     else
                         "disabled"
                    )
                 ++ expanded
     in
-        Html.li [ class <| "list-collapsable-item clearfix " ++ liEnabled ]
-            [ Html.a
-                [ class "fl btn-power-toggle fa fa-power-off mrm"
-                , ariaLabel "Toggle Resource Version"
-                , onClick <| ToggleVersionedResource versionedResource.id
-                ]
-                []
-            , Html.div [ class "list-collapsable-title", onClick <| ExpandVersionedResource versionedResource.id ]
-                [ viewVersion versionedResource.version ]
-            , Html.div [ class "list-collapsable-content clearfix" ]
-                [ Html.div [ class "vri" ] <|
-                    List.concat
-                        [ [ Html.div [ class "list-collapsable-title" ] [ Html.text "inputs to" ] ]
-                        , viewBuilds <| listToMap resourceState.inputTo
-                        ]
-                , Html.div [ class "vri" ] <|
-                    List.concat
-                        [ [ Html.div [ class "list-collapsable-title" ] [ Html.text "outputs of" ] ]
-                        , viewBuilds <| listToMap resourceState.outputOf
-                        ]
-                , Html.div [ class "vri metadata-container" ]
-                    [ Html.div [ class "list-collapsable-title" ] [ Html.text "metadata" ]
-                    , viewMetadata versionedResource.metadata
+    Html.li [ class <| "list-collapsable-item clearfix " ++ liEnabled ]
+        [ Html.a
+            [ class "fl btn-power-toggle fa fa-power-off mrm"
+            , ariaLabel "Toggle Resource Version"
+            , onClick <| ToggleVersionedResource versionedResource.id
+            ]
+            []
+        , Html.div [ class "list-collapsable-title", onClick <| ExpandVersionedResource versionedResource.id ]
+            [ viewVersion versionedResource.version ]
+        , Html.div [ class "list-collapsable-content clearfix" ]
+            [ Html.div [ class "vri" ] <|
+                List.concat
+                    [ [ Html.div [ class "list-collapsable-title" ] [ Html.text "inputs to" ] ]
+                    , viewBuilds <| listToMap resourceState.inputTo
                     ]
+            , Html.div [ class "vri" ] <|
+                List.concat
+                    [ [ Html.div [ class "list-collapsable-title" ] [ Html.text "outputs of" ] ]
+                    , viewBuilds <| listToMap resourceState.outputOf
+                    ]
+            , Html.div [ class "vri metadata-container" ]
+                [ Html.div [ class "list-collapsable-title" ] [ Html.text "metadata" ]
+                , viewMetadata versionedResource.metadata
                 ]
             ]
+        ]
 
 
 getState : Int -> Dict.Dict Int VersionUIState -> VersionUIState
@@ -680,16 +695,16 @@ getState versionID states =
         resourceState =
             Dict.get versionID states
     in
-        case resourceState of
-            Nothing ->
-                { changingErrored = False
-                , expanded = False
-                , inputTo = []
-                , outputOf = []
-                }
+    case resourceState of
+        Nothing ->
+            { changingErrored = False
+            , expanded = False
+            , inputTo = []
+            , outputOf = []
+            }
 
-            Just rs ->
-                rs
+        Just rs ->
+            rs
 
 
 setState : Int -> VersionUIState -> Dict.Dict Int VersionUIState -> Dict.Dict Int VersionUIState
@@ -745,9 +760,9 @@ listToMap builds =
                             Just list ->
                                 list ++ [ build ]
                 in
-                    Dict.insert jobName newList dict
+                Dict.insert jobName newList dict
     in
-        List.foldr insertBuild Dict.empty builds
+    List.foldr insertBuild Dict.empty builds
 
 
 viewBuilds : Dict.Dict String (List Concourse.Build) -> List (Html Msg)
@@ -761,14 +776,14 @@ viewLastChecked now date =
         ago =
             Duration.between (Date.toTime date) now
     in
-        Html.table [ class "last-checked" ]
-            [ Html.tr
-                []
-                [ Html.td [ class "dict-key" ] [ Html.text "checked" ]
-                , Html.td [ title (Date.Format.format "%b %d %Y %I:%M:%S %p" date), class "dict-value" ]
-                    [ Html.span [] [ Html.text (Duration.format ago ++ " ago") ] ]
-                ]
+    Html.table [ class "last-checked" ]
+        [ Html.tr
+            []
+            [ Html.td [ class "dict-key" ] [ Html.text "checked" ]
+            , Html.td [ title (Date.Format.format "%b %d %Y %I:%M:%S %p" date), class "dict-value" ]
+                [ Html.span [] [ Html.text (Duration.format ago ++ " ago") ] ]
             ]
+        ]
 
 
 viewBuildsByJob : Dict.Dict String (List Concourse.Build) -> String -> List (Html Msg)
@@ -785,25 +800,25 @@ viewBuildsByJob buildDict jobName =
                             Just job ->
                                 "/teams/" ++ job.teamName ++ "/pipelines/" ++ job.pipelineName ++ "/jobs/" ++ job.jobName ++ "/builds/" ++ build.name
                 in
-                    Html.li [ class <| Concourse.BuildStatus.show build.status ]
-                        [ Html.a
-                            [ StrictEvents.onLeftClick <| NavTo link
-                            , href link
-                            ]
-                            [ Html.text <| "#" ++ build.name ]
+                Html.li [ class <| Concourse.BuildStatus.show build.status ]
+                    [ Html.a
+                        [ StrictEvents.onLeftClick <| NavTo link
+                        , href link
                         ]
+                        [ Html.text <| "#" ++ build.name ]
+                    ]
     in
-        [ Html.h3 [ class "man pas ansi-bright-black-bg" ] [ Html.text jobName ]
-        , Html.ul [ class "builds-list" ]
-            (case (Dict.get jobName buildDict) of
-                Nothing ->
-                    []
+    [ Html.h3 [ class "man pas ansi-bright-black-bg" ] [ Html.text jobName ]
+    , Html.ul [ class "builds-list" ]
+        (case Dict.get jobName buildDict of
+            Nothing ->
+                []
 
-                -- never happens
-                Just buildList ->
-                    (List.map oneBuildToLi buildList)
-            )
-        ]
+            -- never happens
+            Just buildList ->
+                List.map oneBuildToLi buildList
+        )
+    ]
 
 
 updateExpandedProperties : Model -> List (Cmd Msg)
@@ -814,9 +829,9 @@ updateExpandedProperties model =
                 (isExpanded model.versionedUIStates)
                 model.versionedResources.content
     in
-        List.concatMap
-            (fetchInputAndOutputs model)
-            filteredList
+    List.concatMap
+        (fetchInputAndOutputs model)
+        filteredList
 
 
 isExpanded : Dict.Dict Int VersionUIState -> Concourse.VersionedResource -> Bool
@@ -825,12 +840,12 @@ isExpanded states versionedResource =
         state =
             Dict.get versionedResource.id states
     in
-        case state of
-            Nothing ->
-                False
+    case state of
+        Nothing ->
+            False
 
-            Just someState ->
-                someState.expanded
+        Just someState ->
+            someState.expanded
 
 
 fetchInputAndOutputs : Model -> Concourse.VersionedResource -> List (Cmd Msg)
@@ -843,9 +858,9 @@ fetchInputAndOutputs model versionedResource =
             , versionID = versionedResource.id
             }
     in
-        [ fetchInputTo identifier
-        , fetchOutputOf identifier
-        ]
+    [ fetchInputTo identifier
+    , fetchOutputOf identifier
+    ]
 
 
 fetchResource : Concourse.ResourceIdentifier -> Cmd Msg

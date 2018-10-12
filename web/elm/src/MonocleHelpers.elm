@@ -1,8 +1,8 @@
-module MonocleHelpers exposing (..)
+module MonocleHelpers exposing (modifyWithEffect)
 
 import Maybe.Extra
-import Monocle.Optional
 import Monocle.Lens
+import Monocle.Optional
 
 
 (=|>) : Monocle.Optional.Optional a b -> Monocle.Lens.Lens b c -> Monocle.Optional.Optional a c
@@ -28,4 +28,4 @@ import Monocle.Lens
 
 modifyWithEffect : Monocle.Optional.Optional a b -> (b -> ( b, Cmd msg )) -> a -> ( a, Cmd msg )
 modifyWithEffect l f m =
-    l.getOption m |> Maybe.map f |> Maybe.map (Tuple.mapFirst (flip l.set m)) |> Maybe.withDefault ( m, Cmd.none )
+    l.getOption m |> Maybe.map f |> Maybe.map (Tuple.mapFirst (\a -> l.set a m)) |> Maybe.withDefault ( m, Cmd.none )

@@ -1,4 +1,4 @@
-port module DashboardHd exposing (Model, Msg, init, update, subscriptions, view, groupView, tooltipHd)
+port module DashboardHd exposing (Model, Msg, groupView, init, subscriptions, tooltipHd, update, view)
 
 import Concourse
 import Concourse.Cli
@@ -11,13 +11,13 @@ import Dashboard.Pipeline as Pipeline
 import DashboardHelpers exposing (..)
 import Dict exposing (Dict)
 import Html exposing (Html)
-import Html.Attributes exposing (class, classList, id, href, src, attribute)
+import Html.Attributes exposing (attribute, class, classList, href, id, src)
 import Html.Attributes.Aria exposing (ariaLabel)
 import Html.Events exposing (onMouseEnter)
 import Http
 import Mouse
 import NewTopBar
-import NoPipeline exposing (view, Msg)
+import NoPipeline exposing (Msg, view)
 import RemoteData
 import Routes
 import Set
@@ -69,26 +69,26 @@ init ports turbulencePath search =
         ( topBar, topBarMsg ) =
             NewTopBar.init False search
     in
-        ( { topBar = topBar
-          , mPipelines = RemoteData.NotAsked
-          , pipelines = []
-          , mJobs = RemoteData.NotAsked
-          , pipelineJobs = Dict.empty
-          , pipelineResourceErrors = Dict.empty
-          , now = Nothing
-          , turbulenceImgSrc = turbulencePath
-          , concourseVersion = ""
-          , showHelp = False
-          , hideFooter = False
-          , hideFooterCounter = 0
-          }
-        , Cmd.batch
-            [ fetchPipelines
-            , fetchVersion
-            , Cmd.map TopBarMsg topBarMsg
-            , ports.title <| "Dashboard HD" ++ " - "
-            ]
-        )
+    ( { topBar = topBar
+      , mPipelines = RemoteData.NotAsked
+      , pipelines = []
+      , mJobs = RemoteData.NotAsked
+      , pipelineJobs = Dict.empty
+      , pipelineResourceErrors = Dict.empty
+      , now = Nothing
+      , turbulenceImgSrc = turbulencePath
+      , concourseVersion = ""
+      , showHelp = False
+      , hideFooter = False
+      , hideFooterCounter = 0
+      }
+    , Cmd.batch
+        [ fetchPipelines
+        , fetchVersion
+        , Cmd.map TopBarMsg topBarMsg
+        , ports.title <| "Dashboard HD" ++ " - "
+        ]
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,76 +98,78 @@ update msg model =
             Cmd.batch <|
                 (if model.mPipelines == RemoteData.Loading then
                     []
+
                  else
                     [ fetchPipelines ]
                 )
                     ++ [ fetchVersion, Cmd.map TopBarMsg NewTopBar.fetchUser ]
     in
-        case msg of
-            Noop ->
-                ( model, Cmd.none )
+    case msg of
+        Noop ->
+            ( model, Cmd.none )
 
-            PipelinesResponse response ->
-                case response of
-                    RemoteData.Success pipelines ->
-                        ( { model | mPipelines = response, pipelines = pipelines }, Cmd.batch [ fetchAllJobs, fetchAllResources ] )
+        PipelinesResponse response ->
+            case response of
+                RemoteData.Success pipelines ->
+                    ( { model | mPipelines = response, pipelines = pipelines }, Cmd.batch [ fetchAllJobs, fetchAllResources ] )
 
-                    _ ->
-                        ( model, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
 
-            JobsResponse response ->
-                case ( response, model.mPipelines ) of
-                    ( RemoteData.Success jobs, RemoteData.Success pipelines ) ->
-                        ( { model | mJobs = response, pipelineJobs = jobsByPipelineId pipelines jobs }, Cmd.none )
+        JobsResponse response ->
+            case ( response, model.mPipelines ) of
+                ( RemoteData.Success jobs, RemoteData.Success pipelines ) ->
+                    ( { model | mJobs = response, pipelineJobs = jobsByPipelineId pipelines jobs }, Cmd.none )
 
-                    _ ->
-                        ( model, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
 
-            ResourcesResponse response ->
-                case ( response, model.mPipelines ) of
-                    ( RemoteData.Success resources, RemoteData.Success pipelines ) ->
-                        ( { model | pipelineResourceErrors = resourceErrorsByPipelineIdentifier resources }, Cmd.none )
+        ResourcesResponse response ->
+            case ( response, model.mPipelines ) of
+                ( RemoteData.Success resources, RemoteData.Success pipelines ) ->
+                    ( { model | pipelineResourceErrors = resourceErrorsByPipelineIdentifier resources }, Cmd.none )
 
-                    _ ->
-                        ( model, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
 
-            VersionFetched (Ok version) ->
-                ( { model | concourseVersion = version }, Cmd.none )
+        VersionFetched (Ok version) ->
+            ( { model | concourseVersion = version }, Cmd.none )
 
-            VersionFetched (Err err) ->
-                ( { model | concourseVersion = "" }, Cmd.none )
+        VersionFetched (Err err) ->
+            ( { model | concourseVersion = "" }, Cmd.none )
 
-            ClockTick now ->
-                if model.hideFooterCounter + Time.second > 5 * Time.second then
-                    ( { model | now = Just now, hideFooter = True }, Cmd.none )
-                else
-                    ( { model | now = Just now, hideFooterCounter = model.hideFooterCounter + Time.second }, Cmd.none )
+        ClockTick now ->
+            if model.hideFooterCounter + Time.second > 5 * Time.second then
+                ( { model | now = Just now, hideFooter = True }, Cmd.none )
 
-            AutoRefresh _ ->
-                ( model
-                , reload
-                )
+            else
+                ( { model | now = Just now, hideFooterCounter = model.hideFooterCounter + Time.second }, Cmd.none )
 
-            ShowFooter ->
-                ( { model | hideFooter = False, hideFooterCounter = 0 }, Cmd.none )
+        AutoRefresh _ ->
+            ( model
+            , reload
+            )
 
-            TopBarMsg msg ->
-                let
-                    ( newTopBar, newTopBarMsg ) =
-                        NewTopBar.update msg model.topBar
+        ShowFooter ->
+            ( { model | hideFooter = False, hideFooterCounter = 0 }, Cmd.none )
 
-                    newMsg =
-                        case msg of
-                            NewTopBar.LoggedOut (Ok _) ->
-                                reload
+        TopBarMsg msg ->
+            let
+                ( newTopBar, newTopBarMsg ) =
+                    NewTopBar.update msg model.topBar
 
-                            _ ->
-                                Cmd.map TopBarMsg newTopBarMsg
-                in
-                    ( { model | topBar = newTopBar }, newMsg )
+                newMsg =
+                    case msg of
+                        NewTopBar.LoggedOut (Ok _) ->
+                            reload
 
-            Tooltip pipelineName teamName ->
-                ( model, tooltipHd ( pipelineName, teamName ) )
+                        _ ->
+                            Cmd.map TopBarMsg newTopBarMsg
+            in
+            ( { model | topBar = newTopBar }, newMsg )
+
+        Tooltip pipelineName teamName ->
+            ( model, tooltipHd ( pipelineName, teamName ) )
 
 
 subscriptions : Model -> Sub Msg
@@ -229,7 +231,7 @@ pipelinesView model pipelines =
                     List.reverse <| List.sortBy (List.length << Tuple.second) pipelinesByTeam
 
         teamsWithPipelines =
-            List.map (Tuple.first) pipelinesByTeam
+            List.map Tuple.first pipelinesByTeam
 
         emptyTeams =
             case model.topBar.teams of
@@ -248,11 +250,11 @@ pipelinesView model pipelines =
                     emptyTeams
                 )
     in
-        Html.div
-            [ class "dashboard dashboard-hd" ]
-            [ Html.div [ class "dashboard-content" ] pipelinesByTeamView
-            , footerView model
-            ]
+    Html.div
+        [ class "dashboard dashboard-hd" ]
+        [ Html.div [ class "dashboard-content" ] pipelinesByTeamView
+        , footerView model
+        ]
 
 
 footerView : Model -> Html Msg
@@ -260,6 +262,7 @@ footerView model =
     Html.div
         [ if model.hideFooter || model.showHelp then
             class "dashboard-footer hidden"
+
           else
             class "dashboard-footer"
         ]
@@ -318,16 +321,17 @@ groupView now teamName pipelines =
         teamPipelines =
             if List.isEmpty pipelines then
                 [ pipelineNotSetView ]
+
             else
                 List.map (pipelineView now) pipelines
     in
-        case teamPipelines of
-            [] ->
-                [ Html.div [ class "dashboard-team-name" ] [ Html.text teamName ] ]
+    case teamPipelines of
+        [] ->
+            [ Html.div [ class "dashboard-team-name" ] [ Html.text teamName ] ]
 
-            p :: ps ->
-                -- Wrap the team name and the first pipeline together so the team name is not the last element in a column
-                List.append [ Html.div [ class "dashboard-team-name-wrapper" ] [ Html.div [ class "dashboard-team-name" ] [ Html.text teamName ], p ] ] ps
+        p :: ps ->
+            -- Wrap the team name and the first pipeline together so the team name is not the last element in a column
+            List.append [ Html.div [ class "dashboard-team-name-wrapper" ] [ Html.div [ class "dashboard-team-name" ] [ Html.text teamName ], p ] ] ps
 
 
 pipelineView : Maybe Time -> Pipeline.PipelineWithJobs -> Html Msg
@@ -396,5 +400,5 @@ fetchAllResources =
 fetchVersion : Cmd Msg
 fetchVersion =
     Concourse.Info.fetch
-        |> Task.map (.version)
+        |> Task.map .version
         |> Task.attempt VersionFetched

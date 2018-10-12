@@ -1,12 +1,12 @@
-module Concourse.Pagination exposing (Paginated, Pagination, Page, Direction(..), fetch, parseLinks, equal)
+module Concourse.Pagination exposing (Direction(..), Page, Paginated, Pagination, equal, fetch, parseLinks)
 
 import Dict exposing (Dict)
 import Http
 import Json.Decode
+import Maybe.Extra
 import Regex exposing (Regex)
 import String
 import Task exposing (Task)
-import Maybe.Extra
 
 
 type alias Paginated a =
@@ -108,12 +108,12 @@ parsePagination decode response =
         decoded =
             Json.Decode.decodeString (Json.Decode.list decode) response.body
     in
-        case decoded of
-            Err err ->
-                Err err
+    case decoded of
+        Err err ->
+            Err err
 
-            Ok content ->
-                Ok { content = content, pagination = pagination }
+        Ok content ->
+            Ok { content = content, pagination = pagination }
 
 
 parseLinks : Http.Response String -> Pagination
@@ -130,9 +130,9 @@ parseLinks response =
                 parsed =
                     Dict.fromList <| List.filterMap parseLinkTuple headers
             in
-                Pagination
-                    (Dict.get previousRel parsed |> Maybe.andThen parseParams)
-                    (Dict.get nextRel parsed |> Maybe.andThen parseParams)
+            Pagination
+                (Dict.get previousRel parsed |> Maybe.andThen parseParams)
+                (Dict.get nextRel parsed |> Maybe.andThen parseParams)
 
 
 keysToLower : Dict String a -> Dict String a
@@ -182,10 +182,11 @@ setQuery baseURL query =
             String.join "&" <|
                 List.map (\( k, v ) -> k ++ "=" ++ v) (Dict.toList query)
     in
-        if params == "" then
-            baseURL
-        else
-            baseURL ++ "?" ++ params
+    if params == "" then
+        baseURL
+
+    else
+        baseURL ++ "?" ++ params
 
 
 parseQuery : String -> Dict String String
@@ -199,9 +200,9 @@ parseQuery query =
                 [] ->
                     ( "", "" )
     in
-        Dict.fromList <|
-            List.map parseParam <|
-                String.split "&" query
+    Dict.fromList <|
+        List.map parseParam <|
+            String.split "&" query
 
 
 addParams : String -> Maybe Page -> String
@@ -210,7 +211,7 @@ addParams url page =
         ( baseURL, query ) =
             extractQuery url
     in
-        setQuery baseURL (Dict.union query (toQuery page))
+    setQuery baseURL (Dict.union query (toQuery page))
 
 
 fromQuery : Dict String String -> Maybe Page
@@ -236,10 +237,10 @@ fromQuery query =
             Maybe.map Since <|
                 (Dict.get "to" query |> Maybe.andThen parseNum)
     in
-        Maybe.map (\direction -> { direction = direction, limit = limit }) <|
-            Maybe.Extra.or until <|
-                Maybe.Extra.or since <|
-                    Maybe.Extra.or from to
+    Maybe.map (\direction -> { direction = direction, limit = limit }) <|
+        Maybe.Extra.or until <|
+            Maybe.Extra.or since <|
+                Maybe.Extra.or from to
 
 
 toQuery : Maybe Page -> Dict String String
@@ -267,7 +268,7 @@ toQuery page =
                 limitParam =
                     ( "limit", toString somePage.limit )
             in
-                Dict.fromList [ directionParam, limitParam ]
+            Dict.fromList [ directionParam, limitParam ]
 
 
 parseNum : String -> Maybe Int

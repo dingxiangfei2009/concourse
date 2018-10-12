@@ -3,13 +3,13 @@ port module SubPage exposing (Model(..), Msg(..), init, subscriptions, update, u
 import Autoscroll
 import Build
 import Concourse
+import Dashboard
+import DashboardHd
 import Html exposing (Html)
 import Html.Styled as HS
 import Http
 import Job
 import Json.Encode
-import Resource
-import Build
 import NotFound
 import Pipeline
 import QueryString
@@ -17,8 +17,7 @@ import Resource
 import Routes
 import String
 import UpdateMsg exposing (UpdateMsg)
-import Dashboard
-import DashboardHd
+
 
 
 -- TODO: move ports somewhere else
@@ -179,7 +178,7 @@ update turbulence notFound csrfToken msg mdl =
                 ( newBuildModel, buildCmd ) =
                     Build.update (Build.NewCSRFToken c) buildModel
             in
-                ( BuildModel { scrollModel | subModel = newBuildModel }, buildCmd |> Cmd.map (\buildMsg -> BuildMsg (Autoscroll.SubMsg buildMsg)) )
+            ( BuildModel { scrollModel | subModel = newBuildModel }, buildCmd |> Cmd.map (\buildMsg -> BuildMsg (Autoscroll.SubMsg buildMsg)) )
 
         ( BuildMsg message, BuildModel scrollModel ) ->
             let
@@ -189,7 +188,7 @@ update turbulence notFound csrfToken msg mdl =
                 model =
                     { scrollModel | subModel = { subModel | csrfToken = csrfToken } }
             in
-                handleNotFound notFound ( BuildModel, BuildMsg ) (Autoscroll.update Build.updateWithMessage message model)
+            handleNotFound notFound ( BuildModel, BuildMsg ) (Autoscroll.update Build.updateWithMessage message model)
 
         ( NewCSRFToken c, JobModel model ) ->
             ( JobModel { model | csrfToken = c }, Cmd.none )
@@ -219,7 +218,7 @@ update turbulence notFound csrfToken msg mdl =
             superDupleWrap ( DashboardHdModel, DashboardHdMsg ) <| DashboardHd.update message model
 
         unknown ->
-            flip always (Debug.log ("impossible combination") unknown) <|
+            (\a -> always a (Debug.log "impossible combination" unknown)) <|
                 ( mdl, Cmd.none )
 
 
@@ -271,9 +270,9 @@ urlUpdate route model =
                         )
                         scrollModel.subModel
             in
-                ( BuildModel { scrollModel | subModel = submodel }
-                , Cmd.map BuildMsg (Cmd.map Autoscroll.SubMsg subcmd)
-                )
+            ( BuildModel { scrollModel | subModel = submodel }
+            , Cmd.map BuildMsg (Cmd.map Autoscroll.SubMsg subcmd)
+            )
 
         _ ->
             ( model, Cmd.none )

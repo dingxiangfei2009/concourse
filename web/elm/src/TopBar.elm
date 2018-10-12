@@ -1,4 +1,4 @@
-port module TopBar exposing (Model, Msg(..), fetchUser, init, subscriptions, update, urlUpdate, view, userDisplayName)
+port module TopBar exposing (Model, Msg(..), fetchUser, init, subscriptions, update, urlUpdate, userDisplayName, view)
 
 import Concourse
 import Concourse.Pipeline
@@ -49,18 +49,18 @@ init route =
         pid =
             extractPidFromRoute route.logical
     in
-        ( { route = route
-          , pipeline = Nothing
-          , userState = UserStateUnknown
-          , userMenuVisible = False
-          }
-        , case pid of
-            Nothing ->
-                fetchUser
+    ( { route = route
+      , pipeline = Nothing
+      , userState = UserStateUnknown
+      , userMenuVisible = False
+      }
+    , case pid of
+        Nothing ->
+            fetchUser
 
-            Just pid ->
-                Cmd.batch [ fetchPipeline pid, fetchUser ]
-        )
+        Just pid ->
+            Cmd.batch [ fetchPipeline pid, fetchUser ]
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -97,6 +97,7 @@ update msg model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -122,7 +123,7 @@ update msg model =
             )
 
         LoggedOut (Err err) ->
-            flip always (Debug.log "failed to log out" err) <|
+            (\a -> always a (Debug.log "failed to log out" err)) <|
                 ( model, Cmd.none )
 
         ResetToPipeline url ->
@@ -191,16 +192,16 @@ urlUpdate route model =
         pipelineIdentifier =
             pipelineIdentifierFromRouteOrModel route model
     in
-        ( { model
-            | route = route
-          }
-        , case pipelineIdentifier of
-            Nothing ->
-                fetchUser
+    ( { model
+        | route = route
+      }
+    , case pipelineIdentifier of
+        Nothing ->
+            fetchUser
 
-            Just pid ->
-                Cmd.batch [ fetchPipeline pid, fetchUser ]
-        )
+        Just pid ->
+            Cmd.batch [ fetchPipeline pid, fetchUser ]
+    )
 
 
 view : Model -> Html Msg
@@ -262,15 +263,15 @@ viewBreadcrumbPipeline pipelineName route =
         url =
             Routes.toString route
     in
-        Html.li [ class "nav-item" ]
-            [ Html.a
-                [ StrictEvents.onLeftClick <| ResetToPipeline url
-                , href url
-                ]
-                [ Html.div [ class "breadcrumb-icon breadcrumb-pipeline-icon" ] []
-                , Html.text <| decodeName pipelineName
-                ]
+    Html.li [ class "nav-item" ]
+        [ Html.a
+            [ StrictEvents.onLeftClick <| ResetToPipeline url
+            , href url
             ]
+            [ Html.div [ class "breadcrumb-icon breadcrumb-pipeline-icon" ] []
+            , Html.text <| decodeName pipelineName
+            ]
+        ]
 
 
 viewBreadcrumbJob : String -> Html Msg

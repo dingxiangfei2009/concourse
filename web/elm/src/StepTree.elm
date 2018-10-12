@@ -1,39 +1,37 @@
-module StepTree
-    exposing
-        ( StepTree(..)
-        , Model
-        , HookedStep
-        , Step
-        , StepID
-        , StepName
-        , StepState(..)
-        , Msg(Finished)
-        , init
-        , map
-        , view
-        , update
-        , updateAt
-        , Version
-        , StepFocus
-        , Highlight(..)
-        , parseHighlight
-        )
+module StepTree exposing
+    ( Highlight(..)
+    , HookedStep
+    , Model
+    , Msg(..)
+    , Step
+    , StepFocus
+    , StepID
+    , StepName
+    , StepState(..)
+    , StepTree(..)
+    , Version
+    , init
+    , map
+    , parseHighlight
+    , update
+    , updateAt
+    , view
+    )
 
+import Ansi.Log
+import Array exposing (Array)
+import Concourse
 import Date exposing (Date)
 import Date.Format
 import Debug
 import Dict exposing (Dict)
-import Ansi.Log
-import Array exposing (Array)
-import Dict exposing (Dict)
-import Focus exposing (Focus, (=>))
-import Html exposing (Html)
-import Html.Events exposing (onClick, onMouseDown)
-import Html.Attributes exposing (attribute, class, classList, href)
-import Concourse
 import DictView
-import StrictEvents
+import Focus exposing ((=>), Focus)
+import Html exposing (Html)
+import Html.Attributes exposing (attribute, class, classList, href)
+import Html.Events exposing (onClick, onMouseDown)
 import Navigation
+import StrictEvents
 
 
 type StepTree
@@ -161,7 +159,7 @@ init hl resources plan =
                 foci =
                     Array.foldr Dict.union Dict.empty wrappedSubFoci
             in
-                Model (Aggregate trees) foci False hl
+            Model (Aggregate trees) foci False hl
 
         Concourse.BuildStepDo plans ->
             let
@@ -180,7 +178,7 @@ init hl resources plan =
                 foci =
                     Array.foldr Dict.union Dict.empty wrappedSubFoci
             in
-                Model (Do trees) foci False hl
+            Model (Do trees) foci False hl
 
         Concourse.BuildStepOnSuccess hookedPlan ->
             initHookedStep hl resources OnSuccess hookedPlan
@@ -217,7 +215,7 @@ init hl resources plan =
                 foci =
                     Array.foldr Dict.union selfFoci wrappedSubFoci
             in
-                Model (Retry plan.id trees 1 Auto) foci False hl
+            Model (Retry plan.id trees 1 Auto) foci False hl
 
         Concourse.BuildStepTimeout plan ->
             initWrappedStep hl resources Timeout plan
@@ -288,6 +286,7 @@ isFirstOccurrence resources step =
         { name, firstOccurrence } :: rest ->
             if name == step then
                 firstOccurrence
+
             else
                 isFirstOccurrence rest step
 
@@ -309,7 +308,7 @@ update action root =
                 hl =
                     HighlightLine id line
             in
-                ( { root | highlight = hl }, Navigation.modifyUrl (showHighlight hl) )
+            ( { root | highlight = hl }, Navigation.modifyUrl (showHighlight hl) )
 
         ExtendHighlight id line ->
             let
@@ -322,8 +321,10 @@ update action root =
                             if currentID == id then
                                 if currentLine < line then
                                     HighlightRange id currentLine line
+
                                 else
                                     HighlightRange id line currentLine
+
                             else
                                 HighlightLine id line
 
@@ -331,12 +332,14 @@ update action root =
                             if currentID == id then
                                 if currentLine < line then
                                     HighlightRange id currentLine line
+
                                 else
                                     HighlightRange id line currentLine
+
                             else
                                 HighlightLine id line
             in
-                ( { root | highlight = hl }, Navigation.modifyUrl (showHighlight hl) )
+            ( { root | highlight = hl }, Navigation.modifyUrl (showHighlight hl) )
 
 
 toggleExpanded : Step -> Maybe Bool
@@ -400,12 +403,14 @@ initBottom hl create id name =
                     HighlightLine stepID _ ->
                         if id == stepID then
                             Just True
+
                         else
                             Nothing
 
                     HighlightRange stepID _ _ ->
                         if id == stepID then
                             Just True
+
                         else
                             Nothing
             , version = Nothing
@@ -414,11 +419,11 @@ initBottom hl create id name =
             , timestamps = Dict.empty
             }
     in
-        { tree = create step
-        , foci = Dict.singleton id (Focus.create identity identity)
-        , finished = False
-        , highlight = hl
-        }
+    { tree = create step
+    , foci = Dict.singleton id (Focus.create identity identity)
+    , finished = False
+    , highlight = hl
+    }
 
 
 initWrappedStep : Highlight -> Concourse.BuildResources -> (StepTree -> StepTree) -> Concourse.BuildPlan -> Model
@@ -427,11 +432,11 @@ initWrappedStep hl resources create plan =
         { tree, foci } =
             init hl resources plan
     in
-        { tree = create tree
-        , foci = Dict.map wrapStep foci
-        , finished = False
-        , highlight = hl
-        }
+    { tree = create tree
+    , foci = Dict.map wrapStep foci
+    , finished = False
+    , highlight = hl
+    }
 
 
 initHookedStep : Highlight -> Concourse.BuildResources -> (HookedStep -> StepTree) -> Concourse.HookedPlan -> Model
@@ -443,14 +448,14 @@ initHookedStep hl resources create hookedPlan =
         hookModel =
             init hl resources hookedPlan.hook
     in
-        { tree = create { step = stepModel.tree, hook = hookModel.tree }
-        , foci =
-            Dict.union
-                (Dict.map wrapStep stepModel.foci)
-                (Dict.map wrapHook hookModel.foci)
-        , finished = stepModel.finished
-        , highlight = hl
-        }
+    { tree = create { step = stepModel.tree, hook = hookModel.tree }
+    , foci =
+        Dict.union
+            (Dict.map wrapStep stepModel.foci)
+            (Dict.map wrapHook hookModel.foci)
+    , finished = stepModel.finished
+    , highlight = hl
+    }
 
 
 wrapMultiStep : Int -> Dict StepID StepFocus -> Dict StepID StepFocus
@@ -573,12 +578,12 @@ getMultiStepIndex idx tree =
                 _ ->
                     Debug.crash "impossible"
     in
-        case Array.get idx steps of
-            Just sub ->
-                sub
+    case Array.get idx steps of
+        Just sub ->
+            sub
 
-            Nothing ->
-                Debug.crash "impossible"
+        Nothing ->
+            Debug.crash "impossible"
 
 
 setMultiStepIndex : Int -> (StepTree -> StepTree) -> StepTree -> StepTree
@@ -595,12 +600,12 @@ setMultiStepIndex idx update tree =
                 updatedSteps =
                     Array.set idx (update (getMultiStepIndex idx tree)) trees
             in
-                case focus of
-                    Auto ->
-                        Retry id updatedSteps (idx + 1) Auto
+            case focus of
+                Auto ->
+                    Retry id updatedSteps (idx + 1) Auto
 
-                    User ->
-                        Retry id updatedSteps tab User
+                User ->
+                    Retry id updatedSteps tab User
 
         _ ->
             Debug.crash "impossible"
@@ -671,9 +676,9 @@ viewTab id currentTab idx step =
         tab =
             idx + 1
     in
-        Html.li
-            [ classList [ ( "current", currentTab == tab ), ( "inactive", not <| treeIsActive step ) ] ]
-            [ Html.a [ onClick (SwitchTab id tab) ] [ Html.text (toString tab) ] ]
+    Html.li
+        [ classList [ ( "current", currentTab == tab ), ( "inactive", not <| treeIsActive step ) ] ]
+        [ Html.a [ onClick (SwitchTab id tab) ] [ Html.text (toString tab) ] ]
 
 
 viewSeq : Model -> StepTree -> Html Msg
@@ -737,6 +742,7 @@ viewStep model { id, name, log, state, error, expanded, version, metadata, first
                     Just msg ->
                         Html.span [ class "error" ] [ Html.pre [] [ Html.text msg ] ]
                 ]
+
             else
                 []
         ]
@@ -764,15 +770,15 @@ viewTimestampedLine timestamps hl id lineNo line =
         ts =
             Dict.get lineNo timestamps
     in
-        Html.tr
-            [ classList
-                [ ( "timestamped-line", True )
-                , ( "highlighted-line", highlighted )
-                ]
+    Html.tr
+        [ classList
+            [ ( "timestamped-line", True )
+            , ( "highlighted-line", highlighted )
             ]
-            [ viewTimestamp hl id ( lineNo, ts )
-            , viewLine line
-            ]
+        ]
+        [ viewTimestamp hl id ( lineNo, ts )
+        , viewLine line
+        ]
 
 
 viewLine : Ansi.Log.Line -> Html Msg
@@ -826,13 +832,14 @@ viewStepState state finished =
                 icon =
                     if finished then
                         "fa-circle"
+
                     else
                         "fa-circle-o-notch"
             in
-                Html.i
-                    [ class ("right fa fa-fw " ++ icon)
-                    ]
-                    []
+            Html.i
+                [ class ("right fa fa-fw " ++ icon)
+                ]
+                []
 
         StepStateRunning ->
             Html.i

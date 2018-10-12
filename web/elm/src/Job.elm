@@ -1,26 +1,26 @@
-port module Job exposing (Flags, Model, changeToJob, subscriptions, init, update, updateWithMessage, view, Msg(..))
+port module Job exposing (Flags, Model, Msg(..), changeToJob, init, subscriptions, update, updateWithMessage, view)
 
-import Dict exposing (Dict)
-import Html exposing (Html)
-import Html.Attributes exposing (class, href, id, disabled, attribute)
-import Html.Events exposing (onClick)
-import Http
-import Task
-import Time exposing (Time)
+import BuildDuration
 import Concourse
 import Concourse.Build
-import Concourse.Job
-import Concourse.BuildStatus
-import Concourse.Pagination exposing (Pagination, Paginated, Page)
 import Concourse.BuildResources exposing (fetch)
-import BuildDuration
+import Concourse.BuildStatus
+import Concourse.Job
+import Concourse.Pagination exposing (Page, Paginated, Pagination)
+import Dict exposing (Dict)
 import DictView
-import Navigation
-import StrictEvents exposing (onLeftClick)
+import Html exposing (Html)
+import Html.Attributes exposing (attribute, class, disabled, href, id)
+import Html.Events exposing (onClick)
+import Http
 import LoginRedirect
+import Navigation
 import RemoteData exposing (WebData)
-import UpdateMsg exposing (UpdateMsg)
 import Routes
+import StrictEvents exposing (onLeftClick)
+import Task
+import Time exposing (Time)
+import UpdateMsg exposing (UpdateMsg)
 
 
 type alias Ports =
@@ -99,13 +99,13 @@ init ports flags =
                 , ports = ports
                 }
     in
-        ( model
-        , Cmd.batch
-            [ fetchJob model.jobIdentifier
-            , cmd
-            , getCurrentTime
-            ]
-        )
+    ( model
+    , Cmd.batch
+        [ fetchJob model.jobIdentifier
+        , cmd
+        , getCurrentTime
+        ]
+    )
 
 
 changeToJob : Flags -> Model -> ( Model, Cmd Msg )
@@ -130,12 +130,12 @@ updateWithMessage message model =
         ( mdl, msg ) =
             update message model
     in
-        case mdl.job of
-            RemoteData.Failure _ ->
-                ( mdl, msg, Just UpdateMsg.NotFound )
+    case mdl.job of
+        RemoteData.Failure _ ->
+            ( mdl, msg, Just UpdateMsg.NotFound )
 
-            _ ->
-                ( mdl, msg, Nothing )
+        _ ->
+            ( mdl, msg, Nothing )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -170,6 +170,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -184,6 +185,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -200,8 +202,10 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else if status.code == 404 then
                         ( { model | job = RemoteData.Failure err }, Cmd.none )
+
                     else
                         ( model, Cmd.none )
 
@@ -221,24 +225,25 @@ update action model =
                                     bwrb =
                                         bwr.build
                                 in
-                                    if bwr.build.id == id then
-                                        { bwr
-                                            | resources = Just buildResources
-                                        }
-                                    else
-                                        bwr
+                                if bwr.build.id == id then
+                                    { bwr
+                                        | resources = Just buildResources
+                                    }
+
+                                else
+                                    bwr
 
                         bwrs =
                             model.buildsWithResources
                     in
-                        ( { model
-                            | buildsWithResources =
-                                { bwrs
-                                    | content = List.map transformer anyList
-                                }
-                          }
-                        , Cmd.none
-                        )
+                    ( { model
+                        | buildsWithResources =
+                            { bwrs
+                                | content = List.map transformer anyList
+                            }
+                      }
+                    , Cmd.none
+                    )
 
         BuildResourcesFetched _ (Err err) ->
             ( model, Cmd.none )
@@ -258,6 +263,7 @@ update action model =
                       }
                     , if j.paused then
                         unpauseJob model.jobIdentifier model.csrfToken
+
                       else
                         pauseJob model.jobIdentifier model.csrfToken
                     )
@@ -270,6 +276,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -339,7 +346,7 @@ promoteBuild model build =
             List.head
                 (List.filter (existingBuild build) model.buildsWithResources.content)
     in
-        setResourcesToOld existingBuildWithResource newBwr
+    setResourcesToOld existingBuildWithResource newBwr
 
 
 setExistingResources : Paginated Concourse.Build -> Model -> Paginated BuildWithResources
@@ -366,12 +373,12 @@ handleJobBuildsFetched paginatedBuilds model =
         newBWRs =
             setExistingResources paginatedBuilds model
     in
-        ( { model
-            | buildsWithResources = newBWRs
-            , currentPage = Just newPage
-          }
-        , Cmd.batch <| List.filterMap updateResourcesIfNeeded newBWRs.content
-        )
+    ( { model
+        | buildsWithResources = newBWRs
+        , currentPage = Just newPage
+      }
+    , Cmd.batch <| List.filterMap updateResourcesIfNeeded newBWRs.content
+    )
 
 
 isRunning : Concourse.Build -> Bool
@@ -396,10 +403,11 @@ view model =
                                 , attribute "aria-label" "Toggle Job Paused State"
                                 , class <|
                                     "btn-pause btn-large fl "
-                                        ++ (getPausedState job model.pausedChanging)
+                                        ++ getPausedState job model.pausedChanging
                                 ]
                                 (if not model.pausedChanging then
                                     [ onClick TogglePaused ]
+
                                  else
                                     []
                                 )
@@ -407,7 +415,7 @@ view model =
                             [ Html.i
                                 [ class <|
                                     "fa fa-fw fa-play "
-                                        ++ (getPlayPauseLoadIcon job model.pausedChanging)
+                                        ++ getPlayPauseLoadIcon job model.pausedChanging
                                 ]
                                 []
                             ]
@@ -428,7 +436,7 @@ view model =
                         ]
                     , Html.div [ class "pagination-header" ]
                         [ viewPaginationBar model
-                        , Html.h1 [] [ Html.text ("builds") ]
+                        , Html.h1 [] [ Html.text "builds" ]
                         ]
                     ]
         , case model.buildsWithResources.content of
@@ -447,8 +455,10 @@ getPlayPauseLoadIcon : Concourse.Job -> Bool -> String
 getPlayPauseLoadIcon job pausedChanging =
     if pausedChanging then
         "fa-circle-o-notch fa-spin"
+
     else if job.paused then
         ""
+
     else
         "fa-pause"
 
@@ -457,8 +467,10 @@ getPausedState : Concourse.Job -> Bool -> String
 getPausedState job pausedChanging =
     if pausedChanging then
         "loading"
+
     else if job.paused then
         "enabled"
+
     else
         "disabled"
 
@@ -506,16 +518,16 @@ viewPaginationBar model =
                             ++ "?"
                             ++ paginationParam page
                 in
-                    Html.div [ class "btn-page-link" ]
-                        [ Html.a
-                            [ class "arrow"
-                            , StrictEvents.onLeftClick <| NavTo jobUrl
-                            , href jobUrl
-                            , attribute "aria-label" "Previous Page"
-                            ]
-                            [ Html.i [ class "fa fa-arrow-left" ] []
-                            ]
+                Html.div [ class "btn-page-link" ]
+                    [ Html.a
+                        [ class "arrow"
+                        , StrictEvents.onLeftClick <| NavTo jobUrl
+                        , href jobUrl
+                        , attribute "aria-label" "Previous Page"
                         ]
+                        [ Html.i [ class "fa fa-arrow-left" ] []
+                        ]
+                    ]
         , case model.buildsWithResources.pagination.nextPage of
             Nothing ->
                 Html.div [ class "btn-page-link disabled" ]
@@ -536,16 +548,16 @@ viewPaginationBar model =
                             ++ "?"
                             ++ paginationParam page
                 in
-                    Html.div [ class "btn-page-link" ]
-                        [ Html.a
-                            [ class "arrow"
-                            , StrictEvents.onLeftClick <| NavTo jobUrl
-                            , href jobUrl
-                            , attribute "aria-label" "Next Page"
-                            ]
-                            [ Html.i [ class "fa fa-arrow-right" ] []
-                            ]
+                Html.div [ class "btn-page-link" ]
+                    [ Html.a
+                        [ class "arrow"
+                        , StrictEvents.onLeftClick <| NavTo jobUrl
+                        , href jobUrl
+                        , attribute "aria-label" "Next Page"
                         ]
+                        [ Html.i [ class "fa fa-arrow-right" ] []
+                        ]
+                    ]
         ]
 
 
@@ -556,11 +568,11 @@ viewBuildWithResources model bwr =
             buildResourcesView =
                 viewBuildResources model bwr
         in
-            [ viewBuildHeader model bwr.build
-            , Html.div [ class "pam clearfix" ] <|
-                (BuildDuration.view bwr.build.duration model.now)
-                    :: buildResourcesView
-            ]
+        [ viewBuildHeader model bwr.build
+        , Html.div [ class "pam clearfix" ] <|
+            BuildDuration.view bwr.build.duration model.now
+                :: buildResourcesView
+        ]
 
 
 viewBuildHeader : Model -> Concourse.Build -> Html Msg
@@ -595,28 +607,28 @@ viewBuildResources model buildWithResources =
                     Html.table [ class "build-resources" ] <|
                         List.map (viewBuildOutputs model) resources.outputs
     in
-        [ Html.div [ class "inputs mrl" ]
-            [ Html.div [ class "resource-title pbs" ]
-                [ Html.i [ class "fa fa-fw fa-arrow-down prs" ] []
-                , Html.text ("inputs")
-                ]
-            , inputsTable
+    [ Html.div [ class "inputs mrl" ]
+        [ Html.div [ class "resource-title pbs" ]
+            [ Html.i [ class "fa fa-fw fa-arrow-down prs" ] []
+            , Html.text "inputs"
             ]
-        , Html.div [ class "outputs mrl" ]
-            [ Html.div [ class "resource-title pbs" ]
-                [ Html.i [ class "fa fa-fw fa-arrow-up prs" ] []
-                , Html.text ("outputs")
-                ]
-            , outputsTable
-            ]
+        , inputsTable
         ]
+    , Html.div [ class "outputs mrl" ]
+        [ Html.div [ class "resource-title pbs" ]
+            [ Html.i [ class "fa fa-fw fa-arrow-up prs" ] []
+            , Html.text "outputs"
+            ]
+        , outputsTable
+        ]
+    ]
 
 
 viewBuildInputs : Model -> Concourse.BuildResourcesInput -> Html Msg
 viewBuildInputs model bi =
     Html.tr [ class "mbs pas resource fl clearfix" ]
         [ Html.td [ class "resource-name mrm" ]
-            [ Html.text (bi.resource)
+            [ Html.text bi.resource
             ]
         , Html.td [ class "resource-version" ]
             [ viewVersion bi.version
@@ -628,7 +640,7 @@ viewBuildOutputs : Model -> Concourse.BuildResourcesOutput -> Html Msg
 viewBuildOutputs model bo =
     Html.tr [ class "mbs pas resource fl clearfix" ]
         [ Html.td [ class "resource-name mrm" ]
-            [ Html.text (bo.resource)
+            [ Html.text bo.resource
             ]
         , Html.td [ class "resource-version" ]
             [ viewVersion bo.version

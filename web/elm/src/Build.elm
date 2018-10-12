@@ -1,17 +1,16 @@
-module Build
-    exposing
-        ( init
-        , update
-        , updateWithMessage
-        , view
-        , subscriptions
-        , Model
-        , Page(..)
-        , Msg(..)
-        , getScrollBehavior
-        , initJobBuildPage
-        , changeToBuild
-        )
+module Build exposing
+    ( Model
+    , Msg(..)
+    , Page(..)
+    , changeToBuild
+    , getScrollBehavior
+    , init
+    , initJobBuildPage
+    , subscriptions
+    , update
+    , updateWithMessage
+    , view
+    )
 
 import Autoscroll
 import BuildDuration
@@ -29,7 +28,7 @@ import Debug
 import Dict exposing (Dict)
 import Favicon
 import Html exposing (Html)
-import Html.Attributes exposing (action, class, classList, href, id, method, title, disabled, attribute, tabindex)
+import Html.Attributes exposing (action, attribute, class, classList, disabled, href, id, method, tabindex, title)
 import Html.Lazy
 import Http
 import Keyboard
@@ -39,13 +38,13 @@ import Maybe.Extra
 import Navigation
 import Process
 import RemoteData exposing (WebData)
+import Routes
 import Scroll
 import StrictEvents exposing (onLeftClick, onMouseWheel, onScroll)
 import String
 import Task exposing (Task)
 import Time exposing (Time)
 import UpdateMsg exposing (UpdateMsg)
-import Routes
 
 
 type alias Ports =
@@ -148,7 +147,7 @@ init ports flags page =
                 , hash = flags.hash
                 }
     in
-        ( model, Cmd.batch [ cmd, getCurrentTime ] )
+    ( model, Cmd.batch [ cmd, getCurrentTime ] )
 
 
 subscriptions : Model -> Sub Msg
@@ -171,6 +170,7 @@ changeToBuild : Page -> Model -> ( Model, Cmd Msg )
 changeToBuild page model =
     if model.browsingIndex > 0 && page == model.page then
         ( model, Cmd.none )
+
     else
         let
             newIndex =
@@ -180,19 +180,19 @@ changeToBuild page model =
                 RemoteData.map (\cb -> { cb | prep = Nothing, output = Nothing })
                     model.currentBuild
         in
-            ( { model
-                | browsingIndex = newIndex
-                , currentBuild = newBuild
-                , autoScroll = True
-                , page = page
-              }
-            , case page of
-                BuildPage buildId ->
-                    fetchBuild 0 newIndex buildId
+        ( { model
+            | browsingIndex = newIndex
+            , currentBuild = newBuild
+            , autoScroll = True
+            , page = page
+          }
+        , case page of
+            BuildPage buildId ->
+                fetchBuild 0 newIndex buildId
 
-                JobBuildPage jbi ->
-                    fetchJobBuild newIndex jbi
-            )
+            JobBuildPage jbi ->
+                fetchJobBuild newIndex jbi
+        )
 
 
 extractTitle : Model -> String
@@ -202,7 +202,7 @@ extractTitle model =
             job.name ++ ((" #" ++ build.build.name) ++ " - ")
 
         ( Just build, Nothing ) ->
-            "#" ++ (toString (build.build.id) ++ " - ")
+            "#" ++ (toString build.build.id ++ " - ")
 
         _ ->
             ""
@@ -214,12 +214,12 @@ updateWithMessage message model =
         ( mdl, msg ) =
             update message model
     in
-        case mdl.currentBuild of
-            RemoteData.Failure _ ->
-                ( mdl, msg, Just UpdateMsg.NotFound )
+    case mdl.currentBuild of
+        RemoteData.Failure _ ->
+            ( mdl, msg, Just UpdateMsg.NotFound )
 
-            _ ->
-                ( mdl, msg, Nothing )
+        _ ->
+            ( mdl, msg, Nothing )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -251,6 +251,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -265,8 +266,10 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else if status.code == 404 then
                         ( { model | currentBuild = RemoteData.Failure err }, Cmd.none )
+
                     else
                         ( model, Cmd.none )
 
@@ -284,6 +287,7 @@ update action model =
                 Http.BadStatus { status } ->
                     if status.code == 401 then
                         ( model, LoginRedirect.requestLoginRedirect "" )
+
                     else
                         ( model, Cmd.none )
 
@@ -294,7 +298,7 @@ update action model =
             handleBuildPrepFetched browsingIndex buildPrep model
 
         BuildPrepFetched _ (Err err) ->
-            flip always (Debug.log ("failed to fetch build preparation") (err)) <|
+            (\a -> always a (Debug.log "failed to fetch build preparation" err)) <|
                 ( model, Cmd.none )
 
         BuildOutputMsg browsingIndex action ->
@@ -303,32 +307,33 @@ update action model =
                     currentBuild =
                         model.currentBuild |> RemoteData.toMaybe
                 in
-                    case ( currentBuild, currentBuild |> Maybe.andThen .output ) of
-                        ( Just currentBuild, Just output ) ->
-                            let
-                                ( newOutput, cmd, outMsg ) =
-                                    BuildOutput.update action output
+                case ( currentBuild, currentBuild |> Maybe.andThen .output ) of
+                    ( Just currentBuild, Just output ) ->
+                        let
+                            ( newOutput, cmd, outMsg ) =
+                                BuildOutput.update action output
 
-                                ( newModel, newCmd ) =
-                                    handleOutMsg outMsg
-                                        { model
-                                            | currentBuild = RemoteData.Success { currentBuild | output = Just newOutput }
-                                        }
-                            in
-                                ( newModel
-                                , Cmd.batch
-                                    [ newCmd
-                                    , Cmd.map (BuildOutputMsg browsingIndex) cmd
-                                    ]
-                                )
+                            ( newModel, newCmd ) =
+                                handleOutMsg outMsg
+                                    { model
+                                        | currentBuild = RemoteData.Success { currentBuild | output = Just newOutput }
+                                    }
+                        in
+                        ( newModel
+                        , Cmd.batch
+                            [ newCmd
+                            , Cmd.map (BuildOutputMsg browsingIndex) cmd
+                            ]
+                        )
 
-                        _ ->
-                            Debug.crash "impossible (received action for missing BuildOutput)"
+                    _ ->
+                        Debug.crash "impossible (received action for missing BuildOutput)"
+
             else
                 ( model, Cmd.none )
 
         BuildHistoryFetched (Err err) ->
-            flip always (Debug.log ("failed to fetch build history") (err)) <|
+            (\a -> always a (Debug.log "failed to fetch build history" err)) <|
                 ( model, Cmd.none )
 
         BuildHistoryFetched (Ok history) ->
@@ -338,7 +343,7 @@ update action model =
             handleBuildJobFetched job model
 
         BuildJobDetailsFetched (Err err) ->
-            flip always (Debug.log ("failed to fetch build job details") (err)) <|
+            (\a -> always a (Debug.log "failed to fetch build job details" err)) <|
                 ( model, Cmd.none )
 
         RevealCurrentBuildInHistory ->
@@ -347,6 +352,7 @@ update action model =
         ScrollBuilds event ->
             if event.deltaX == 0 then
                 ( model, scrollBuilds event.deltaY )
+
             else
                 ( model, scrollBuilds -event.deltaX )
 
@@ -356,6 +362,7 @@ update action model =
         WindowScrolled fromBottom ->
             if fromBottom == 0 then
                 ( { model | autoScroll = True }, Cmd.none )
+
             else
                 ( { model | autoScroll = False }, Cmd.none )
 
@@ -369,7 +376,7 @@ update action model =
             handleKeyPressed (Char.fromCode keycode) model
 
         KeyUped keycode ->
-            case (Char.fromCode keycode) of
+            case Char.fromCode keycode of
                 'T' ->
                     ( { model | previousTriggerBuildByKey = False }, Cmd.none )
 
@@ -391,62 +398,65 @@ handleKeyPressed key model =
                 _ ->
                     { model | previousKeyPress = Nothing }
     in
-        case key of
-            'h' ->
-                case Maybe.andThen (nextBuild model.history) currentBuild of
-                    Just build ->
-                        update (SwitchToBuild build) newModel
+    case key of
+        'h' ->
+            case Maybe.andThen (nextBuild model.history) currentBuild of
+                Just build ->
+                    update (SwitchToBuild build) newModel
 
-                    Nothing ->
-                        ( newModel, Cmd.none )
-
-            'l' ->
-                case Maybe.andThen (prevBuild model.history) currentBuild of
-                    Just build ->
-                        update (SwitchToBuild build) newModel
-
-                    Nothing ->
-                        ( newModel, Cmd.none )
-
-            'j' ->
-                ( newModel, Task.perform (always Noop) Scroll.scrollDown )
-
-            'k' ->
-                ( newModel, Task.perform (always Noop) Scroll.scrollUp )
-
-            'T' ->
-                if not model.previousTriggerBuildByKey then
-                    update
-                        (TriggerBuild (currentBuild |> Maybe.andThen .job))
-                        { newModel | previousTriggerBuildByKey = True }
-                else
+                Nothing ->
                     ( newModel, Cmd.none )
 
-            'A' ->
-                if currentBuild == List.head model.history then
-                    case currentBuild of
-                        Just build ->
-                            update (AbortBuild build.id) newModel
+        'l' ->
+            case Maybe.andThen (prevBuild model.history) currentBuild of
+                Just build ->
+                    update (SwitchToBuild build) newModel
 
-                        Nothing ->
-                            ( newModel, Cmd.none )
-                else
+                Nothing ->
                     ( newModel, Cmd.none )
 
-            'g' ->
-                if model.previousKeyPress == Just 'g' then
-                    ( { newModel | autoScroll = False }, Task.perform (always Noop) Scroll.toWindowTop )
-                else
-                    ( newModel, Cmd.none )
+        'j' ->
+            ( newModel, Task.perform (always Noop) Scroll.scrollDown )
 
-            'G' ->
-                ( { newModel | autoScroll = True }, Task.perform (always Noop) Scroll.toWindowBottom )
+        'k' ->
+            ( newModel, Task.perform (always Noop) Scroll.scrollUp )
 
-            '?' ->
-                ( { model | showHelp = not model.showHelp }, Cmd.none )
+        'T' ->
+            if not model.previousTriggerBuildByKey then
+                update
+                    (TriggerBuild (currentBuild |> Maybe.andThen .job))
+                    { newModel | previousTriggerBuildByKey = True }
 
-            _ ->
+            else
                 ( newModel, Cmd.none )
+
+        'A' ->
+            if currentBuild == List.head model.history then
+                case currentBuild of
+                    Just build ->
+                        update (AbortBuild build.id) newModel
+
+                    Nothing ->
+                        ( newModel, Cmd.none )
+
+            else
+                ( newModel, Cmd.none )
+
+        'g' ->
+            if model.previousKeyPress == Just 'g' then
+                ( { newModel | autoScroll = False }, Task.perform (always Noop) Scroll.toWindowTop )
+
+            else
+                ( newModel, Cmd.none )
+
+        'G' ->
+            ( { newModel | autoScroll = True }, Task.perform (always Noop) Scroll.toWindowBottom )
+
+        '?' ->
+            ( { model | showHelp = not model.showHelp }, Cmd.none )
+
+        _ ->
+            ( newModel, Cmd.none )
 
 
 nextBuild : List Concourse.Build -> Concourse.Build -> Maybe Concourse.Build
@@ -455,6 +465,7 @@ nextBuild builds build =
         first :: second :: rest ->
             if second == build then
                 Just first
+
             else
                 nextBuild (second :: rest) build
 
@@ -468,6 +479,7 @@ prevBuild builds build =
         first :: second :: rest ->
             if first == build then
                 Just second
+
             else
                 prevBuild (second :: rest) build
 
@@ -510,6 +522,7 @@ handleBuildFetched browsingIndex build model =
             ( newModel, cmd ) =
                 if build.status == Concourse.BuildStatusPending then
                     ( withBuild, pollUntilStarted browsingIndex build.id )
+
                 else if build.reapTime == Nothing then
                     case model.currentBuild |> RemoteData.toMaybe |> Maybe.andThen .prep of
                         Nothing ->
@@ -520,21 +533,23 @@ handleBuildFetched browsingIndex build model =
                                 ( newModel, cmd ) =
                                     initBuildOutput build withBuild
                             in
-                                ( newModel
-                                , Cmd.batch
-                                    [ cmd, fetchBuildPrep Time.second browsingIndex build.id ]
-                                )
+                            ( newModel
+                            , Cmd.batch
+                                [ cmd, fetchBuildPrep Time.second browsingIndex build.id ]
+                            )
+
                 else
                     ( withBuild, Cmd.none )
         in
-            ( newModel
-            , Cmd.batch
-                [ cmd
-                , setFavicon build.status
-                , model.ports.title <| extractTitle newModel
-                , fetchJobAndHistory
-                ]
-            )
+        ( newModel
+        , Cmd.batch
+            [ cmd
+            , setFavicon build.status
+            , model.ports.title <| extractTitle newModel
+            , fetchJobAndHistory
+            ]
+        )
+
     else
         ( model, Cmd.none )
 
@@ -542,8 +557,8 @@ handleBuildFetched browsingIndex build model =
 pollUntilStarted : Int -> Int -> Cmd Msg
 pollUntilStarted browsingIndex buildId =
     Cmd.batch
-        [ (fetchBuild Time.second browsingIndex buildId)
-        , (fetchBuildPrep Time.second browsingIndex buildId)
+        [ fetchBuild Time.second browsingIndex buildId
+        , fetchBuildPrep Time.second browsingIndex buildId
         ]
 
 
@@ -553,14 +568,14 @@ initBuildOutput build model =
         ( output, outputCmd ) =
             BuildOutput.init { hash = model.hash } build
     in
-        ( { model
-            | currentBuild =
-                RemoteData.map
-                    (\info -> { info | output = Just output })
-                    model.currentBuild
-          }
-        , Cmd.map (BuildOutputMsg model.browsingIndex) outputCmd
-        )
+    ( { model
+        | currentBuild =
+            RemoteData.map
+                (\info -> { info | output = Just output })
+                model.currentBuild
+      }
+    , Cmd.map (BuildOutputMsg model.browsingIndex) outputCmd
+    )
 
 
 handleBuildJobFetched : Concourse.Job -> Model -> ( Model, Cmd Msg )
@@ -569,7 +584,7 @@ handleBuildJobFetched job model =
         withJobDetails =
             { model | job = Just job }
     in
-        ( withJobDetails, model.ports.title <| extractTitle withJobDetails )
+    ( withJobDetails, model.ports.title <| extractTitle withJobDetails )
 
 
 handleHistoryFetched : Paginated Concourse.Build -> Model -> ( Model, Cmd Msg )
@@ -581,15 +596,15 @@ handleHistoryFetched history model =
         currentBuild =
             model.currentBuild |> RemoteData.toMaybe
     in
-        case ( history.pagination.nextPage, currentBuild |> Maybe.andThen (.job << .build) ) of
-            ( Nothing, _ ) ->
-                ( withBuilds, Cmd.none )
+    case ( history.pagination.nextPage, currentBuild |> Maybe.andThen (.job << .build) ) of
+        ( Nothing, _ ) ->
+            ( withBuilds, Cmd.none )
 
-            ( Just page, Just job ) ->
-                ( withBuilds, Cmd.batch [ fetchBuildHistory job (Just page) ] )
+        ( Just page, Just job ) ->
+            ( withBuilds, Cmd.batch [ fetchBuildHistory job (Just page) ] )
 
-            ( Just url, Nothing ) ->
-                Debug.crash "impossible"
+        ( Just url, Nothing ) ->
+            Debug.crash "impossible"
 
 
 handleBuildPrepFetched : Int -> Concourse.BuildPrep -> Model -> ( Model, Cmd Msg )
@@ -603,6 +618,7 @@ handleBuildPrepFetched browsingIndex buildPrep model =
           }
         , Cmd.none
         )
+
     else
         ( model, Cmd.none )
 
@@ -639,13 +655,13 @@ view model =
                         , Html.div [ class "help-line" ] [ Html.div [ class "keys" ] [ Html.span [ class "key" ] [ Html.text "?" ] ], Html.text "hide/show help" ]
                         ]
                     ]
-                        ++ let
-                            build =
-                                currentBuild.build
+                        ++ (let
+                                build =
+                                    currentBuild.build
 
-                            maybeBirthDate =
-                                Maybe.Extra.or (build.duration.startedAt) (build.duration.finishedAt)
-                           in
+                                maybeBirthDate =
+                                    Maybe.Extra.or build.duration.startedAt build.duration.finishedAt
+                            in
                             case ( maybeBirthDate, build.reapTime ) of
                                 ( Just birthDate, Just reapTime ) ->
                                     [ Html.div
@@ -663,12 +679,13 @@ view model =
                                             [ class "build-name" ]
                                             [ Html.text <|
                                                 "build #"
-                                                    ++ case build.job of
-                                                        Nothing ->
-                                                            toString build.id
+                                                    ++ (case build.job of
+                                                            Nothing ->
+                                                                toString build.id
 
-                                                        Just _ ->
-                                                            build.name
+                                                            Just _ ->
+                                                                build.name
+                                                       )
                                             ]
                                         , Html.div
                                             [ class "date" ]
@@ -708,6 +725,7 @@ view model =
 
                                 _ ->
                                     []
+                           )
                 ]
 
         _ ->
@@ -743,7 +761,7 @@ viewBuildPrep prep =
                         ([ viewBuildPrepLi "checking pipeline is not paused" prep.pausedPipeline Dict.empty
                          , viewBuildPrepLi "checking job is not paused" prep.pausedJob Dict.empty
                          ]
-                            ++ (viewBuildPrepInputs prep.inputs)
+                            ++ viewBuildPrepInputs prep.inputs
                             ++ [ viewBuildPrepLi "waiting for a suitable set of input versions" prep.inputsSatisfied prep.missingInputReasons
                                , viewBuildPrepLi "checking max-in-flight is not reached" prep.maxRunningBuilds Dict.empty
                                ]
@@ -768,7 +786,7 @@ viewBuildPrepInput ( name, status ) =
 viewBuildPrepDetails : Dict String String -> Html Msg
 viewBuildPrepDetails details =
     Html.ul [ class "details" ]
-        (List.map (viewDetailItem) (Dict.toList details))
+        (List.map viewDetailItem (Dict.toList details))
 
 
 viewDetailItem : ( String, String ) -> Html Msg
@@ -789,7 +807,7 @@ viewBuildPrepLi text status details =
             [ viewBuildPrepStatus status ]
         , Html.span []
             [ Html.text text ]
-        , (viewBuildPrepDetails details)
+        , viewBuildPrepDetails details
         ]
 
 
@@ -824,16 +842,16 @@ viewBuildHeader build { now, job, history } =
                                 Just job ->
                                     job.disableManualTrigger
                     in
-                        Html.button
-                            [ class "build-action fr"
-                            , disabled buttonDisabled
-                            , attribute "role" "button"
-                            , attribute "tabindex" "0"
-                            , attribute "aria-label" "Trigger Build"
-                            , attribute "title" "Trigger Build"
-                            , onLeftClick <| TriggerBuild build.job
-                            ]
-                            [ Html.i [ class "fa fa-plus-circle" ] [] ]
+                    Html.button
+                        [ class "build-action fr"
+                        , disabled buttonDisabled
+                        , attribute "role" "button"
+                        , attribute "tabindex" "0"
+                        , attribute "aria-label" "Trigger Build"
+                        , attribute "title" "Trigger Build"
+                        , onLeftClick <| TriggerBuild build.job
+                        ]
+                        [ Html.i [ class "fa fa-plus-circle" ] [] ]
 
                 _ ->
                     Html.text ""
@@ -849,6 +867,7 @@ viewBuildHeader build { now, job, history } =
                     , attribute "title" "Abort Build"
                     ]
                     [ Html.i [ class "fa fa-times-circle" ] [] ]
+
             else
                 Html.text ""
 
@@ -859,33 +878,33 @@ viewBuildHeader build { now, job, history } =
                         jobUrl =
                             "/teams/" ++ teamName ++ "/pipelines/" ++ pipelineName ++ "/jobs/" ++ jobName
                     in
-                        Html.a
-                            [ StrictEvents.onLeftClick <| NavTo jobUrl
-                            , href jobUrl
-                            ]
-                            [ Html.span [ class "build-name" ] [ Html.text jobName ]
-                            , Html.text (" #" ++ build.name)
-                            ]
+                    Html.a
+                        [ StrictEvents.onLeftClick <| NavTo jobUrl
+                        , href jobUrl
+                        ]
+                        [ Html.span [ class "build-name" ] [ Html.text jobName ]
+                        , Html.text (" #" ++ build.name)
+                        ]
 
                 _ ->
                     Html.text ("build #" ++ toString build.id)
     in
-        Html.div [ class "fixed-header" ]
-            [ Html.div [ class ("build-header " ++ Concourse.BuildStatus.show build.status) ]
-                [ Html.div [ class "build-actions fr" ] [ triggerButton, abortButton ]
-                , Html.h1 [] [ buildTitle ]
-                , case now of
-                    Just n ->
-                        BuildDuration.view build.duration n
+    Html.div [ class "fixed-header" ]
+        [ Html.div [ class ("build-header " ++ Concourse.BuildStatus.show build.status) ]
+            [ Html.div [ class "build-actions fr" ] [ triggerButton, abortButton ]
+            , Html.h1 [] [ buildTitle ]
+            , case now of
+                Just n ->
+                    BuildDuration.view build.duration n
 
-                    Nothing ->
-                        Html.text ""
-                ]
-            , Html.div
-                [ onMouseWheel ScrollBuilds
-                ]
-                [ lazyViewHistory build history ]
+                Nothing ->
+                    Html.text ""
             ]
+        , Html.div
+            [ onMouseWheel ScrollBuilds
+            ]
+            [ lazyViewHistory build history ]
+        ]
 
 
 lazyViewHistory : Concourse.Build -> List Concourse.Build -> Html Msg
@@ -904,6 +923,7 @@ viewHistoryItem currentBuild build =
     Html.li
         [ if build.id == currentBuild.id then
             class (Concourse.BuildStatus.show currentBuild.status ++ " current")
+
           else
             class (Concourse.BuildStatus.show build.status)
         ]
@@ -911,7 +931,7 @@ viewHistoryItem currentBuild build =
             [ onLeftClick (SwitchToBuild build)
             , href (Routes.buildRoute build)
             ]
-            [ Html.text (build.name)
+            [ Html.text build.name
             ]
         ]
 
@@ -1016,27 +1036,30 @@ handleOutMsg outMsg model =
                         newDuration =
                             if Concourse.BuildStatus.isRunning status then
                                 duration
+
                             else
                                 { duration | finishedAt = Just date }
 
                         newStatus =
                             if Concourse.BuildStatus.isRunning build.status then
                                 status
+
                             else
                                 build.status
 
                         newBuild =
                             { build | status = newStatus, duration = newDuration }
                     in
-                        ( { model
-                            | history = updateHistory newBuild model.history
-                            , currentBuild = RemoteData.Success { currentBuild | build = newBuild }
-                          }
-                        , if Concourse.BuildStatus.isRunning build.status then
-                            setFavicon status
-                          else
-                            Cmd.none
-                        )
+                    ( { model
+                        | history = updateHistory newBuild model.history
+                        , currentBuild = RemoteData.Success { currentBuild | build = newBuild }
+                      }
+                    , if Concourse.BuildStatus.isRunning build.status then
+                        setFavicon status
+
+                      else
+                        Cmd.none
+                    )
 
 
 setFavicon : Concourse.BuildStatus -> Cmd Msg
@@ -1051,6 +1074,7 @@ updateHistory newBuild =
         \build ->
             if build.id == newBuild.id then
                 newBuild
+
             else
                 build
 

@@ -1,12 +1,11 @@
-module NewTopBar
-    exposing
-        ( Model
-        , Msg(FilterMsg, KeyDown, LoggedOut, UserFetched)
-        , fetchUser
-        , init
-        , update
-        , view
-        )
+module NewTopBar exposing
+    ( Model
+    , Msg(..)
+    , fetchUser
+    , init
+    , update
+    , view
+    )
 
 import Array
 import Concourse
@@ -122,16 +121,16 @@ update msg model =
                         False ->
                             "/dashboard/hd"
             in
-                ( { model
-                    | userState = UserStateLoggedOut
-                    , userMenuVisible = False
-                    , teams = RemoteData.Loading
-                  }
-                , Navigation.newUrl redirectUrl
-                )
+            ( { model
+                | userState = UserStateLoggedOut
+                , userMenuVisible = False
+                , teams = RemoteData.Loading
+              }
+            , Navigation.newUrl redirectUrl
+            )
 
         LoggedOut (Err err) ->
-            flip always (Debug.log "failed to log out" err) <|
+            (\a -> always a (Debug.log "failed to log out" err)) <|
                 ( model, Cmd.none )
 
         ToggleUserMenu ->
@@ -152,19 +151,21 @@ update msg model =
         KeyDown keycode ->
             if not model.showAutocomplete then
                 ( { model | selectionMade = False, selection = 0 }, Cmd.none )
+
             else
                 case keycode of
                     -- enter key
                     13 ->
                         if not model.selectionMade then
                             ( model, Cmd.none )
+
                         else
                             let
                                 options =
                                     Array.fromList (autocompleteOptions model)
 
                                 index =
-                                    (model.selection - 1) % Array.length options
+                                    modBy (Array.length options) (model.selection - 1)
 
                                 selectedItem =
                                     case Array.get index options of
@@ -174,7 +175,7 @@ update msg model =
                                         Just item ->
                                             item
                             in
-                                ( { model | selectionMade = False, selection = 0, query = selectedItem }, Cmd.none )
+                            ( { model | selectionMade = False, selection = 0, query = selectedItem }, Cmd.none )
 
                     -- up arrow
                     38 ->
@@ -260,19 +261,19 @@ view model =
                     options =
                         autocompleteOptions model
                 in
-                    List.indexedMap
-                        (\index option ->
-                            Html.li
-                                [ classList
-                                    [ ( "search-option", True )
-                                    , ( "active", model.selectionMade && index == (model.selection - 1) % List.length options )
-                                    ]
-                                , onMouseDown (FilterMsg option)
-                                , onMouseOver (SelectMsg index)
+                List.indexedMap
+                    (\index option ->
+                        Html.li
+                            [ classList
+                                [ ( "search-option", True )
+                                , ( "active", model.selectionMade && index == modBy (List.length options) (model.selection - 1) )
                                 ]
-                                [ Html.text option ]
-                        )
-                        options
+                            , onMouseDown (FilterMsg option)
+                            , onMouseOver (SelectMsg index)
+                            ]
+                            [ Html.text option ]
+                    )
+                    options
             ]
         ]
 

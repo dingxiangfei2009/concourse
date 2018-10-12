@@ -1,22 +1,20 @@
-effect module Scroll
-    where { subscription = MySub }
-    exposing
-        ( FromBottom
-        , toBottom
-        , toWindowTop
-        , toWindowBottom
-        , fromWindowBottom
-        , scroll
-        , scrollIntoView
-        , scrollUp
-        , scrollDown
-        )
+effect module Scroll where { subscription = MySub } exposing
+    ( FromBottom
+    , fromWindowBottom
+    , scroll
+    , scrollDown
+    , scrollIntoView
+    , scrollUp
+    , toBottom
+    , toWindowBottom
+    , toWindowTop
+    )
 
 import Dom.LowLevel as Dom
 import Json.Decode as Json
+import Native.Scroll
 import Process
 import Task exposing (Task)
-import Native.Scroll
 
 
 type alias FromBottom =
@@ -31,12 +29,12 @@ decodeFromBottom =
                 scrolledHeight =
                     yOffset + clientHeight
             in
-                Ok (scrollHeight - scrolledHeight)
+            Ok (scrollHeight - scrolledHeight)
 
 
 decodeComparators : Json.Decoder ( Int, Int, Int )
 decodeComparators =
-    Json.map3 (,,)
+    Json.map3 (\a b c -> ( a, b, c ))
         (Json.at [ "currentTarget", "pageYOffset" ] Json.int)
         (Json.at [ "target", "documentElement", "clientHeight" ] Json.int)
         (Json.at [ "target", "documentElement", "scrollHeight" ] Json.int)
@@ -150,11 +148,11 @@ onSelfMsg router fb state =
                 send (MySub tagger) =
                     Platform.sendToApp router (tagger fb)
             in
-                Task.sequence (List.map send subs)
-                    |> Task.andThen
-                        (\_ ->
-                            Task.succeed state
-                        )
+            Task.sequence (List.map send subs)
+                |> Task.andThen
+                    (\_ ->
+                        Task.succeed state
+                    )
 
 
 customDecoder : Json.Decoder b -> (b -> Result String a) -> Json.Decoder a

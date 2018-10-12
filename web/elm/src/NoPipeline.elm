@@ -1,9 +1,9 @@
-module NoPipeline exposing (view, Msg)
+module NoPipeline exposing (Msg, view)
 
-import Html exposing (Html)
-import Html.Attributes exposing (class, target, href)
-import Html.Attributes.Aria exposing (ariaLabel)
 import Concourse.Cli
+import Html exposing (Html)
+import Html.Attributes exposing (class, href, target)
+import Html.Attributes.Aria exposing (ariaLabel)
 
 
 type Msg

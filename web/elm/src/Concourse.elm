@@ -1,69 +1,69 @@
-module Concourse
-    exposing
-        ( AuthSession
-        , AuthToken
-        , Build
-        , BuildDuration
-        , BuildId
-        , BuildName
-        , BuildPlan
-        , BuildPrep
-        , BuildPrepStatus(..)
-        , BuildResources
-        , BuildResourcesInput
-        , BuildResourcesOutput
-        , BuildStatus(..)
-        , BuildStep(..)
-        , CSRFToken
-        , Cause
-        , HookedPlan
-        , Info
-        , Job
-        , JobBuildIdentifier
-        , JobIdentifier
-        , JobInput
-        , JobName
-        , JobOutput
-        , Metadata
-        , MetadataField
-        , Pipeline
-        , PipelineGroup
-        , PipelineIdentifier
-        , PipelineName
-        , PipelineStatus(..)
-        , Resource
-        , ResourceIdentifier
-        , Team
-        , TeamName
-        , User
-        , Version
-        , VersionedResource
-        , VersionedResourceIdentifier
-        , csrfTokenHeaderName
-        , decodeAuthToken
-        , decodeBuild
-        , decodeBuildPlan
-        , decodeBuildPrep
-        , decodeBuildResources
-        , decodeBuildStatus
-        , decodeCause
-        , decodeInfo
-        , decodeJob
-        , decodeMetadata
-        , decodePipeline
-        , decodeResource
-        , decodeTeam
-        , decodeUser
-        , decodeVersion
-        , decodeVersionedResource
-        , retrieveCSRFToken
-        )
+module Concourse exposing
+    ( AuthSession
+    , AuthToken
+    , Build
+    , BuildDuration
+    , BuildId
+    , BuildName
+    , BuildPlan
+    , BuildPrep
+    , BuildPrepStatus(..)
+    , BuildResources
+    , BuildResourcesInput
+    , BuildResourcesOutput
+    , BuildStatus(..)
+    , BuildStep(..)
+    , CSRFToken
+    , Cause
+    , HookedPlan
+    , Info
+    , Job
+    , JobBuildIdentifier
+    , JobIdentifier
+    , JobInput
+    , JobName
+    , JobOutput
+    , Metadata
+    , MetadataField
+    , Pipeline
+    , PipelineGroup
+    , PipelineIdentifier
+    , PipelineName
+    , PipelineStatus(..)
+    , Resource
+    , ResourceIdentifier
+    , Team
+    , TeamName
+    , User
+    , Version
+    , VersionedResource
+    , VersionedResourceIdentifier
+    , csrfTokenHeaderName
+    , decodeAuthToken
+    , decodeBuild
+    , decodeBuildPlan
+    , decodeBuildPrep
+    , decodeBuildResources
+    , decodeBuildStatus
+    , decodeCause
+    , decodeInfo
+    , decodeJob
+    , decodeMetadata
+    , decodePipeline
+    , decodeResource
+    , decodeTeam
+    , decodeUser
+    , decodeVersion
+    , decodeVersionedResource
+    , retrieveCSRFToken
+    )
 
 import Array exposing (Array)
 import Date exposing (Date)
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Decode.Extra exposing ((|:))
+
 
 
 -- AuthToken
@@ -76,7 +76,7 @@ type alias AuthToken =
 decodeAuthToken : Json.Decode.Decoder AuthToken
 decodeAuthToken =
     customDecoder
-        (Json.Decode.succeed (,)
+        (Json.Decode.succeed (\a b -> ( a, b ))
             |: Json.Decode.field "type" Json.Decode.string
             |: Json.Decode.field "value" Json.Decode.string
         )

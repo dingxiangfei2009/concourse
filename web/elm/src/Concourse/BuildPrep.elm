@@ -1,14 +1,14 @@
-module Concourse.BuildPrep exposing (..)
+module Concourse.BuildPrep exposing (fetch)
 
+import Concourse
 import Http
 import Task exposing (Task)
-import Concourse
 
 
 fetch : Concourse.BuildId -> Task Http.Error Concourse.BuildPrep
 fetch buildId =
     Http.toTask
-        << flip Http.get Concourse.decodeBuildPrep
+        << (\a -> Http.get a Concourse.decodeBuildPrep)
     <|
         "/api/v1/builds/"
             ++ toString buildId
